@@ -86,11 +86,12 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
       tagIds: selection.tagIds,
       idPrefix: DateTime.now().millisecondsSinceEpoch.toString(),
       generateHash: true,
+      onDuplicate: DuplicateImportBehavior.mergeTags,
     );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${result.importedCount} arquivo(s) importado(s). ${result.errors.length} erro(s).')),
+      SnackBar(content: Text('${result.importedCount} importado(s), ${result.updatedCount} atualizado(s), ${result.errors.length} erro(s).')),
     );
     await _reload();
   }
