@@ -235,7 +235,7 @@ class StructuresHome extends StatelessWidget {
                       if (state.instances.isEmpty) const ListTile(title: Text('Nenhuma instância encontrada para os filtros selecionados.')),
                       ...state.instances.map((StructureInstance instance) {
                             final totalSlots = instance.templateSnapshot.slots.length;
-                            final filledSlots = instance.selectedPdfIds.values.where((pdfId) => pdfId != null && pdfId!.isNotEmpty).length;
+                            final filledSlots = instance.selectedPdfIds.values.where((pdfIds) => pdfIds.isNotEmpty).length;
                             return ListTile(
                               title: Row(
                                 children: [

@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
   static const _databaseName = 'partitura_maestro.db';
-  static const _databaseVersion = 4;
+  static const _databaseVersion = 5;
 
   static final DatabaseService _instance = DatabaseService._internal();
 
@@ -120,7 +120,8 @@ class DatabaseService {
         instance_id TEXT NOT NULL,
         slot_id TEXT NOT NULL,
         pdf_id TEXT,
-        PRIMARY KEY (instance_id, slot_id),
+        position INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (instance_id, slot_id, pdf_id),
         FOREIGN KEY (instance_id) REFERENCES structure_instances(id) ON DELETE CASCADE,
         FOREIGN KEY (pdf_id) REFERENCES pdf_files(id) ON DELETE SET NULL
       );
@@ -224,6 +225,30 @@ class DatabaseService {
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE pdf_files ADD COLUMN source_folder_uri TEXT;');
       await db.execute('ALTER TABLE pdf_files ADD COLUMN source_document_uri TEXT;');
+    }
+
+    if (oldVersion < 5) {
+      await db.transaction((txn) async {
+        await txn.execute('ALTER TABLE instance_slot_selection RENAME TO instance_slot_selection_old;');
+        await txn.execute('''
+          CREATE TABLE instance_slot_selection (
+            instance_id TEXT NOT NULL,
+            slot_id TEXT NOT NULL,
+            pdf_id TEXT,
+            position INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (instance_id, slot_id, pdf_id),
+            FOREIGN KEY (instance_id) REFERENCES structure_instances(id) ON DELETE CASCADE,
+            FOREIGN KEY (pdf_id) REFERENCES pdf_files(id) ON DELETE SET NULL
+          );
+        ''');
+        await txn.execute('''
+          INSERT INTO instance_slot_selection (instance_id, slot_id, pdf_id, position)
+          SELECT instance_id, slot_id, pdf_id, 0
+          FROM instance_slot_selection_old
+          WHERE pdf_id IS NOT NULL;
+        ''');
+        await txn.execute('DROP TABLE instance_slot_selection_old;');
+      });
     }
 
   }
