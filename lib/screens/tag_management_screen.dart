@@ -22,7 +22,7 @@ class TagManagementScreen extends StatefulWidget {
 }
 
 class _TagManagementScreenState extends State<TagManagementScreen> {
-    final TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
   late Future<List<_TagViewData>> _tagsFuture;
@@ -35,8 +35,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   Future<List<_TagViewData>> _loadTagData() async {
-    final tags = await context.read<DataService>().getTags();
-    final usageByTag = await context.read<DataService>().getTagUsageStats();
+    final dataService = context.read<DataService>();
+    final tags = await dataService.getTags();
+    final usageByTag = await dataService.getTagUsageStats();
 
     final items = tags
         .map(
@@ -48,9 +49,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
         .toList();
 
     items.sort(
-      (a, b) => _dataService
+      (a, b) => dataService
           .normalizeTagName(a.tag.name)
-          .compareTo(context.read<DataService>().normalizeTagName(b.tag.name)),
+          .compareTo(dataService.normalizeTagName(b.tag.name)),
     );
     return items;
   }
@@ -129,15 +130,16 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   Map<String, List<_TagViewData>> _groupAlphabetically(List<_TagViewData> tags) {
+    final dataService = context.read<DataService>();
     final filtered = tags.where((item) {
-      final normalizedName = context.read<DataService>().normalizeTagName(item.tag.name);
-      final normalizedQuery = context.read<DataService>().normalizeTagName(_searchQuery);
+      final normalizedName = dataService.normalizeTagName(item.tag.name);
+      final normalizedQuery = dataService.normalizeTagName(_searchQuery);
       return normalizedQuery.isEmpty || normalizedName.contains(normalizedQuery);
     }).toList();
 
     final grouped = <String, List<_TagViewData>>{};
     for (final item in filtered) {
-      final normalized = context.read<DataService>().normalizeTagName(item.tag.name, caseFold: false);
+      final normalized = dataService.normalizeTagName(item.tag.name, caseFold: false);
       final firstChar = normalized.isEmpty ? '#' : normalized.substring(0, 1).toUpperCase();
       final key = RegExp(r'[A-Z]').hasMatch(firstChar) ? firstChar : '#';
       grouped.putIfAbsent(key, () => []).add(item);
@@ -145,9 +147,9 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
     for (final entry in grouped.entries) {
       entry.value.sort(
-        (a, b) => _dataService
+        (a, b) => dataService
             .normalizeTagName(a.tag.name)
-            .compareTo(context.read<DataService>().normalizeTagName(b.tag.name)),
+            .compareTo(dataService.normalizeTagName(b.tag.name)),
       );
     }
 
