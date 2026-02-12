@@ -651,6 +651,22 @@ TagMapper.toDto(tag).toMap(),
     await db.update('structure_instances', values, where: 'id = ?', whereArgs: [instanceId]);
   }
 
+  Future<void> renameInstance(String instanceId, String newName) async {
+    final normalized = newName.trim();
+    if (normalized.isEmpty) return;
+    await updateInstanceMeta(instanceId: instanceId, name: normalized);
+  }
+
+  Future<void> clearAllInstanceSelections(String instanceId) async {
+    final db = await _db;
+    await db.delete('instance_slot_selection', where: 'instance_id = ?', whereArgs: [instanceId]);
+  }
+
+  Future<void> deleteInstance(String instanceId) async {
+    final db = await _db;
+    await db.delete('structure_instances', where: 'id = ?', whereArgs: [instanceId]);
+  }
+
   Future<StructureInstance?> getInstance(String instanceId) async {
     final db = await _db;
     final rows = await db.query('structure_instances', where: 'id = ?', whereArgs: [instanceId], limit: 1);

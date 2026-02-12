@@ -233,17 +233,38 @@ class StructuresHome extends StatelessWidget {
                         ),
                       ),
                       if (state.instances.isEmpty) const ListTile(title: Text('Nenhuma instância encontrada para os filtros selecionados.')),
-                      ...state.instances.map((StructureInstance instance) => ListTile(
-                            title: Text(instance.name),
-                            subtitle: Text('${instance.templateSnapshot.name} • ${_formatDate(instance.createdAt)} ${instance.isCompleted ? '• Concluída' : ''}'),
-                            trailing: FilledButton.tonal(
-                              onPressed: () async {
-                                await Navigator.push(context, MaterialPageRoute(builder: (_) => InstanceSelectionScreen(instance: instance)));
-                                await refresh();
-                              },
-                              child: const Text('Abrir'),
-                            ),
-                          )),
+                      ...state.instances.map((StructureInstance instance) {
+                            final totalSlots = instance.templateSnapshot.slots.length;
+                            final filledSlots = instance.selectedPdfIds.values.where((pdfId) => pdfId != null && pdfId!.isNotEmpty).length;
+                            return ListTile(
+                              title: Row(
+                                children: [
+                                  Expanded(child: Text(instance.name)),
+                                  if (instance.isCompleted)
+                                    const Chip(
+                                      avatar: Icon(Icons.check_circle, size: 16),
+                                      label: Text('Concluída'),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                '${instance.templateSnapshot.name} • ${_formatDate(instance.createdAt)}\n$filledSlots/$totalSlots slots preenchidos',
+                              ),
+                              isThreeLine: true,
+                              trailing: FilledButton.tonal(
+                                onPressed: () async {
+                                  await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => InstanceSelectionScreen(instance: instance)),
+                                  );
+                                  if (!context.mounted) return;
+                                  await refresh();
+                                },
+                                child: const Text('Abrir'),
+                              ),
+                            );
+                          }),
                     ],
                   ),
                 ),

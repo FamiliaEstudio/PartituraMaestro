@@ -18,7 +18,7 @@ class InstanceSelectionScreen extends StatefulWidget {
 }
 
 class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
-    late Future<Map<String, dynamic>> _future;
+  late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
@@ -88,6 +88,65 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
     );
   }
 
+  Future<void> _renameInstance(StructureInstance instance) async {
+    final controller = TextEditingController(text: instance.name);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Renomear instância'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Nome'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName == null || newName.isEmpty) return;
+
+    await context.read<DataService>().renameInstance(instance.id, newName);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Instância renomeada.')));
+    await _refresh();
+  }
+
+  Future<void> _deleteInstance(StructureInstance instance) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir instância'),
+        content: Text('Deseja excluir "${instance.name}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await context.read<DataService>().deleteInstance(instance.id);
+    if (!mounted) return;
+    Navigator.pop(context, true);
+  }
+
+  Future<void> _clearAllSelections(StructureInstance instance) async {
+    await context.read<DataService>().clearAllInstanceSelections(instance.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seleções limpas.')));
+    await _refresh();
+  }
+
   Future<void> _openSelectedPdf(PdfFile pdf) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => PdfViewerScreen(pdfFile: pdf)));
     await _refresh();
@@ -97,7 +156,13 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.instance.name),
+        title: FutureBuilder<Map<String, dynamic>>(
+          future: _future,
+          builder: (context, snapshot) {
+            final instance = snapshot.data?['instance'] as StructureInstance?;
+            return Text(instance?.name ?? widget.instance.name);
+          },
+        ),
         actions: [
           IconButton(
             tooltip: 'Duplicar instância',
@@ -109,6 +174,35 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Instância duplicada com sucesso.')));
             },
             icon: const Icon(Icons.copy),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Ações da instância',
+            onSelected: (value) async {
+              final current = await context.read<DataService>().getInstance(widget.instance.id);
+              if (current == null || !mounted) return;
+              if (value == 'rename') {
+                await _renameInstance(current);
+              } else if (value == 'clear') {
+                await _clearAllSelections(current);
+              } else if (value == 'delete') {
+                await _deleteInstance(current);
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'rename',
+                child: ListTile(leading: Icon(Icons.edit), title: Text('Renomear')),
+              ),
+              PopupMenuItem<String>(
+                value: 'clear',
+                child: ListTile(leading: Icon(Icons.cleaning_services_outlined), title: Text('Limpar seleções')),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Excluir')),
+              ),
+            ],
           ),
         ],
       ),
