@@ -1,2 +1,2 @@
 # PartituraMaestro
-Projeto em Dart para organização de partituras
+Projeto em Dart/Flutter para organização de partituras
