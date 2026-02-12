@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/pdf_file.dart';
 import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
+import '../models/tag.dart';
 import '../services/data_service.dart';
 
 class InstanceSelectionScreen extends StatefulWidget {
@@ -15,19 +16,40 @@ class InstanceSelectionScreen extends StatefulWidget {
 }
 
 class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
-  late StructureTemplate _template;
   final DataService _dataService = DataService();
+  late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
     super.initState();
-    _template = _dataService.getTemplate(widget.instance.templateId)!;
+    _future = _loadData();
   }
 
-  void _selectPdfForSlot(String slotId, List<String> requiredTags) {
-    final candidates = _dataService.findPdfsByTags(requiredTags);
+  Future<Map<String, dynamic>> _loadData() async {
+    final template = await _dataService.getTemplate(widget.instance.templateId);
+    final pdfs = await _dataService.getPdfs();
+    final tags = await _dataService.getTags();
+    final selections = await _dataService.getInstanceSelections(widget.instance.id);
+    return {
+      'template': template,
+      'pdfs': pdfs,
+      'tags': tags,
+      'selections': selections,
+    };
+  }
 
-    showModalBottomSheet(
+  Future<void> _refresh() async {
+    setState(() {
+      _future = _loadData();
+    });
+  }
+
+  Future<void> _selectPdfForSlot(String slotId, List<String> requiredTags) async {
+    final candidates = await _dataService.findPdfsByTags(requiredTags);
+
+    if (!mounted) return;
+
+    await showModalBottomSheet(
       context: context,
       builder: (context) {
         if (candidates.isEmpty) {
@@ -45,11 +67,11 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
             final pdf = candidates[index];
             return ListTile(
               title: Text(pdf.title),
-              onTap: () {
-                setState(() {
-                  _dataService.updateInstanceSelection(widget.instance.id, slotId, pdf.id);
-                });
+              onTap: () async {
+                await _dataService.updateInstanceSelection(widget.instance.id, slotId, pdf.id);
+                if (!context.mounted) return;
                 Navigator.pop(context);
+                await _refresh();
               },
             );
           },
@@ -62,39 +84,57 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.instance.name)),
-      body: ListView.builder(
-        itemCount: _template.slots.length,
-        itemBuilder: (context, index) {
-          final slot = _template.slots[index];
-          final selectedPdfId = widget.instance.selectedPdfIds[slot.id];
-          final selectedPdf = selectedPdfId != null
-              ? _dataService.getPdfs().firstWhere(
-                    (p) => p.id == selectedPdfId,
-                    orElse: () => PdfFile(
-                      id: '',
-                      title: 'Desconhecido',
-                      path: '',
-                    ),
-                  )
-              : null;
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          final requiredTags = slot.requiredTagIds
-              .map((id) => _dataService.getTag(id)?.name ?? id)
-              .join(', ');
+          final template = snapshot.data?['template'] as StructureTemplate?;
+          if (template == null) {
+            return const Center(child: Text('Template não encontrado.'));
+          }
 
-          return Card(
-            margin: const EdgeInsets.all(8),
-            child: ListTile(
-              title: Text(slot.name),
-              subtitle: Text(
-                selectedPdf != null
-                    ? 'Selecionado: ${selectedPdf.title}\nTags exigidas: $requiredTags'
-                    : 'Nenhum arquivo selecionado\nTags exigidas: $requiredTags',
-              ),
-              isThreeLine: true,
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => _selectPdfForSlot(slot.id, slot.requiredTagIds),
-            ),
+          final pdfs = (snapshot.data?['pdfs'] as List<PdfFile>?) ?? [];
+          final tags = (snapshot.data?['tags'] as List<Tag>?) ?? [];
+          final selections = (snapshot.data?['selections'] as Map<String, String?>?) ?? {};
+
+          return ListView.builder(
+            itemCount: template.slots.length,
+            itemBuilder: (context, index) {
+              final slot = template.slots[index];
+              final selectedPdfId = selections[slot.id];
+              final selectedPdf = selectedPdfId != null
+                  ? pdfs.firstWhere(
+                      (p) => p.id == selectedPdfId,
+                      orElse: () => PdfFile(
+                        id: '',
+                        title: 'Desconhecido',
+                        path: '',
+                      ),
+                    )
+                  : null;
+
+              final requiredTags = slot.requiredTagIds
+                  .map((id) => tags.firstWhere((t) => t.id == id, orElse: () => Tag(id: id, name: id)).name)
+                  .join(', ');
+
+              return Card(
+                margin: const EdgeInsets.all(8),
+                child: ListTile(
+                  title: Text(slot.name),
+                  subtitle: Text(
+                    selectedPdf != null
+                        ? 'Selecionado: ${selectedPdf.title}\nTags exigidas: $requiredTags'
+                        : 'Nenhum arquivo selecionado\nTags exigidas: $requiredTags',
+                  ),
+                  isThreeLine: true,
+                  trailing: const Icon(Icons.arrow_forward_ios),
+                  onTap: () => _selectPdfForSlot(slot.id, slot.requiredTagIds),
+                ),
+              );
+            },
           );
         },
       ),

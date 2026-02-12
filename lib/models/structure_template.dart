@@ -11,8 +11,8 @@ class SubStructureSlot {
   SubStructureSlot({
     required this.id,
     required this.name,
-    this.requiredTagIds = const [],
-  });
+    List<String>? requiredTagIds,
+  }) : requiredTagIds = requiredTagIds ?? [];
 
   Map<String, dynamic> toMap() {
     return {
@@ -33,8 +33,8 @@ class StructureTemplate {
   StructureTemplate({
     required this.id,
     required this.name,
-    this.slots = const [],
-  });
+    List<SubStructureSlot>? slots,
+  }) : slots = slots ?? [];
 
   Map<String, dynamic> toMap() {
     return {

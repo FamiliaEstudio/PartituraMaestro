@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
+
 import '../models/structure_template.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
-import 'package:uuid/uuid.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
   const CreateTemplateScreen({super.key});
@@ -12,39 +13,56 @@ class CreateTemplateScreen extends StatefulWidget {
 }
 
 class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
+  final DataService _dataService = DataService();
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final List<SubStructureSlot> _slots = [];
-  final DataService _dataService = DataService();
+  List<Tag> _allTags = [];
 
-  Future<void> _addSlot() async {
-    final nameController = TextEditingController();
-    List<String> selectedTagIds = [];
-    final allTags = _dataService.getTags();
+  @override
+  void initState() {
+    super.initState();
+    _loadTags();
+  }
 
-    await showDialog(
+  Future<void> _loadTags() async {
+    final tags = await _dataService.getTags();
+    if (!mounted) return;
+    setState(() {
+      _allTags = tags;
+    });
+  }
+
+  void _addSlot() {
+    final slotNameController = TextEditingController();
+    final selectedTagIds = <String>[];
+
+    showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Adicionar Slot'),
+              title: const Text('Nova Sub-estrutura'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Nome do Slot (ex: Entrada)'),
+                      controller: slotNameController,
+                      decoration: const InputDecoration(labelText: 'Nome (ex: Entrada)'),
                     ),
-                    const SizedBox(height: 10),
-                    const Text('Tags Requeridas:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...allTags.map((tag) {
-                      return CheckboxListTile(
-                        title: Text(tag.name),
+                    const SizedBox(height: 16),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Tags exigidas:'),
+                    ),
+                    ..._allTags.map(
+                      (tag) => CheckboxListTile(
                         value: selectedTagIds.contains(tag.id),
-                        onChanged: (bool? value) {
-                          setStateDialog(() {
+                        title: Text(tag.name),
+                        onChanged: (value) {
+                          setModalState(() {
                             if (value == true) {
                               selectedTagIds.add(tag.id);
                             } else {
@@ -52,8 +70,8 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                             }
                           });
                         },
-                      );
-                    }).toList(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -62,15 +80,17 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancelar'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
-                    if (nameController.text.isNotEmpty) {
+                    if (slotNameController.text.trim().isNotEmpty) {
                       setState(() {
-                        _slots.add(SubStructureSlot(
-                          id: const Uuid().v4(),
-                          name: nameController.text,
-                          requiredTagIds: selectedTagIds,
-                        ));
+                        _slots.add(
+                          SubStructureSlot(
+                            id: const Uuid().v4(),
+                            name: slotNameController.text.trim(),
+                            requiredTagIds: List.from(selectedTagIds),
+                          ),
+                        );
                       });
                       Navigator.pop(context);
                     }
@@ -85,14 +105,15 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     );
   }
 
-  void _saveTemplate() {
+  Future<void> _saveTemplate() async {
     if (_formKey.currentState!.validate()) {
       final template = StructureTemplate(
         id: const Uuid().v4(),
         name: _nameController.text,
         slots: _slots,
       );
-      _dataService.addTemplate(template);
+      await _dataService.addTemplate(template);
+      if (!mounted) return;
       Navigator.pop(context);
     }
   }
@@ -119,9 +140,10 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                   itemCount: _slots.length,
                   itemBuilder: (context, index) {
                     final slot = _slots[index];
-                    // Recuperar nomes das tags para exibição
                     final tagNames = slot.requiredTagIds
-                        .map((id) => _dataService.getTag(id)?.name ?? id)
+                        .map(
+                          (id) => _allTags.firstWhere((tag) => tag.id == id, orElse: () => Tag(id: id, name: id)).name,
+                        )
                         .join(', ');
 
                     return ListTile(
