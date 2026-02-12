@@ -43,6 +43,17 @@ class MainActivity : FlutterActivity() {
                     result.success(bytes)
                 }
 
+                "listTreeDocumentsRecursively" -> {
+                    val treeUriString = call.argument<String>("treeUri")
+                    if (treeUriString.isNullOrBlank()) {
+                        result.success(emptyList<Map<String, Any?>>())
+                        return@setMethodCallHandler
+                    }
+
+                    val docs = listTreeDocumentsRecursively(treeUriString)
+                    result.success(docs)
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -126,6 +137,37 @@ class MainActivity : FlutterActivity() {
             result.success(mapped)
         } catch (ex: Exception) {
             result.error("list_failed", ex.message, null)
+        }
+    }
+
+
+    private fun listTreeDocumentsRecursively(treeUriString: String): List<Map<String, Any?>> {
+        return try {
+            val treeUri = Uri.parse(treeUriString)
+            val root = DocumentFile.fromTreeUri(this, treeUri) ?: return emptyList()
+            val out = mutableListOf<Map<String, Any?>>()
+
+            fun walk(node: DocumentFile) {
+                if (node.isFile) {
+                    out.add(
+                        mapOf(
+                            "displayName" to (node.name ?: "Sem nome"),
+                            "uri" to node.uri.toString(),
+                            "size" to if (node.length() >= 0) node.length() else null,
+                            "mimeType" to node.type,
+                        )
+                    )
+                    return
+                }
+                if (!node.isDirectory) return
+
+                node.listFiles().forEach { child -> walk(child) }
+            }
+
+            walk(root)
+            out.sortedBy { (it["displayName"] as String).lowercase() }
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 

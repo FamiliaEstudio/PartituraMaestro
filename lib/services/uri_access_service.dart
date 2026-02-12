@@ -24,4 +24,46 @@ class UriAccessService {
       return null;
     }
   }
+
+  Future<List<UriDocumentMetadata>> listTreeDocumentsRecursively(String treeUri) async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'listTreeDocumentsRecursively',
+        {'treeUri': treeUri},
+      );
+
+      return (result ?? <dynamic>[])
+          .whereType<Map>()
+          .map((entry) => UriDocumentMetadata.fromMap(entry.cast<Object?, Object?>()))
+          .toList();
+    } on MissingPluginException {
+      return const [];
+    }
+  }
+}
+
+class UriDocumentMetadata {
+  const UriDocumentMetadata({
+    required this.displayName,
+    required this.uri,
+    required this.size,
+    required this.mimeType,
+  });
+
+  final String displayName;
+  final String uri;
+  final int? size;
+  final String? mimeType;
+
+  bool get isPdf =>
+      (mimeType?.toLowerCase() == 'application/pdf') || displayName.toLowerCase().endsWith('.pdf');
+
+  factory UriDocumentMetadata.fromMap(Map<Object?, Object?> map) {
+    return UriDocumentMetadata(
+      displayName: (map['displayName'] as String?) ?? 'Sem nome',
+      uri: map['uri'] as String,
+      size: (map['size'] as num?)?.toInt(),
+      mimeType: map['mimeType'] as String?,
+    );
+  }
 }

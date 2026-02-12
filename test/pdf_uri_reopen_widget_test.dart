@@ -81,7 +81,7 @@ void main() {
     await service.importPdfCandidates(
       candidates: [
         PdfImportCandidate(
-          path: localPath,
+          sourceId: localPath,
           displayName: 'partitura.pdf',
           uri: uri,
         ),
