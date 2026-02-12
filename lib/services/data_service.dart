@@ -32,19 +32,27 @@ class ImportResult {
 }
 
 class PdfImportCandidate {
-  final String path;
+  final String sourceId;
   final String displayName;
   final String? uri;
   final String? sourceFolderUri;
   final String? sourceDocumentUri;
+  final int? size;
+  final String? mimeType;
 
   const PdfImportCandidate({
-    required this.path,
+    required this.sourceId,
     required this.displayName,
     this.uri,
     this.sourceFolderUri,
     this.sourceDocumentUri,
+    this.size,
+    this.mimeType,
   });
+
+  String get path => sourceId;
+
+  bool get isUriSource => uri != null && uri!.startsWith('content://');
 }
 
 class TagUsageStats {
@@ -373,23 +381,22 @@ TagMapper.toDto(tag).toMap(),
     return storageStatus.isGranted;
   }
 
-  Future<List<PdfImportCandidate>> scanPdfDirectory(String folderPath) async {
-    final dir = Directory(folderPath);
-    if (!await dir.exists()) {
-      throw FileSystemException('Pasta não encontrada', folderPath);
-    }
-
-    final entities = await dir.list(recursive: true, followLinks: false).toList();
-    final candidates = <PdfImportCandidate>[];
-    for (final entity in entities) {
-      if (entity is! File) continue;
-      final lower = entity.path.toLowerCase();
-      if (!lower.endsWith('.pdf')) continue;
-      final name = entity.uri.pathSegments.isNotEmpty
-          ? entity.uri.pathSegments.last
-          : entity.path.split(Platform.pathSeparator).last;
-      candidates.add(PdfImportCandidate(path: entity.path, displayName: name));
-    }
+  Future<List<PdfImportCandidate>> scanPdfDirectory(String folderTreeUri) async {
+    final documents = await _uriAccessService.listTreeDocumentsRecursively(folderTreeUri);
+    final candidates = documents
+        .where((doc) => doc.isPdf)
+        .map(
+          (doc) => PdfImportCandidate(
+            sourceId: 'saf://${doc.uri}',
+            displayName: doc.displayName,
+            uri: doc.uri,
+            sourceFolderUri: folderTreeUri,
+            sourceDocumentUri: doc.uri,
+            size: doc.size,
+            mimeType: doc.mimeType,
+          ),
+        )
+        .toList();
     candidates.sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
     return candidates;
   }

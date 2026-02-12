@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/usecases/find_candidate_pdfs.dart';
+import '../services/android_document_service.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
 import 'file_browser_screen.dart';
@@ -22,7 +23,8 @@ class ImportPdfScreen extends StatefulWidget {
 }
 
 class _ImportPdfScreenState extends State<ImportPdfScreen> {
-  
+  final AndroidDocumentService _androidDocumentService = const AndroidDocumentService();
+
   ImportMode _mode = ImportMode.files;
   bool _loading = false;
   bool _generateHash = true;
@@ -50,7 +52,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
         .where((f) => f.path != null)
         .map(
           (f) => PdfImportCandidate(
-            path: f.path!,
+            sourceId: f.path!,
             displayName: f.name,
             uri: f.identifier,
           ),
@@ -80,14 +82,15 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
   }
 
   Future<void> _pickFolderAndScan() async {
-    final hasPermission = await context.read<DataService>().ensureAndroidStoragePermission();
-    if (!hasPermission) {
-      _showMsg('Permissão de armazenamento negada.');
+    if (!Platform.isAndroid) {
+      _showMsg('A importação por pasta usa SAF e está disponível somente no Android.');
       return;
     }
 
-    final directory = await FilePicker.platform.getDirectoryPath();
-    if (directory == null) return;
+    final treeUri = await _androidDocumentService.pickTree();
+    if (treeUri == null) return;
+
+    await context.read<DataService>().persistUriPermission(treeUri);
 
     setState(() {
       _loading = true;
@@ -95,13 +98,13 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
     });
 
     try {
-      final scanned = await context.read<FindCandidatePdfs>()(directory);
+      final scanned = await context.read<FindCandidatePdfs>()(treeUri);
       setState(() {
         _candidates = scanned;
         _selectedPaths = scanned.map((e) => e.path).toSet();
       });
     } catch (e) {
-      _showMsg('Falha ao varrer pasta: $e');
+      _showMsg('Falha ao varrer pasta SAF: $e');
     } finally {
       setState(() {
         _loading = false;

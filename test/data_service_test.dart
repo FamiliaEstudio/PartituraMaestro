@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -7,8 +9,30 @@ import 'package:pastoral_pdf_organizer/models/structure_instance.dart';
 import 'package:pastoral_pdf_organizer/models/structure_template.dart';
 import 'package:pastoral_pdf_organizer/models/tag.dart';
 import 'package:pastoral_pdf_organizer/services/data_service.dart';
+import 'package:pastoral_pdf_organizer/services/uri_access_service.dart';
 
 import 'test_db_utils.dart';
+
+class _FakeUriAccessService extends UriAccessService {
+  _FakeUriAccessService({
+    this.treeDocs = const <UriDocumentMetadata>[],
+    this.bytesByUri = const <String, Uint8List>{},
+    this.persistResult = true,
+  });
+
+  final List<UriDocumentMetadata> treeDocs;
+  final Map<String, Uint8List> bytesByUri;
+  final bool persistResult;
+
+  @override
+  Future<List<UriDocumentMetadata>> listTreeDocumentsRecursively(String treeUri) async => treeDocs;
+
+  @override
+  Future<Uint8List?> readBytes(String uri) async => bytesByUri[uri];
+
+  @override
+  Future<bool> persistReadPermission(String uri) async => persistResult;
+}
 
 void main() {
   final service = DataService();
@@ -101,7 +125,7 @@ void main() {
 
     final initial = await service.importPdfCandidates(
       candidates: [
-        PdfImportCandidate(path: originalPath, displayName: 'original.pdf'),
+        PdfImportCandidate(sourceId: originalPath, displayName: 'original.pdf'),
       ],
       tagIds: const [],
       idPrefix: 'dup-check',
@@ -112,8 +136,8 @@ void main() {
 
     final duplicateResult = await service.importPdfCandidates(
       candidates: [
-        PdfImportCandidate(path: originalPath, displayName: 'original.pdf'),
-        PdfImportCandidate(path: duplicatePath, displayName: 'duplicate.pdf'),
+        PdfImportCandidate(sourceId: originalPath, displayName: 'original.pdf'),
+        PdfImportCandidate(sourceId: duplicatePath, displayName: 'duplicate.pdf'),
       ],
       tagIds: const [],
       idPrefix: 'dup-check',
@@ -194,7 +218,7 @@ void main() {
     final result = await service.importPdfCandidates(
       candidates: const [
         PdfImportCandidate(
-          path: 'saf://content://com.example/tree/root/document.pdf',
+          sourceId: 'saf://content://com.example/tree/root/document.pdf',
           displayName: 'document.pdf',
           uri: uri,
           sourceFolderUri: 'content://com.example/tree/root',
@@ -212,5 +236,62 @@ void main() {
     expect(imported.uri, uri);
     expect(imported.sourceFolderUri, 'content://com.example/tree/root');
     expect(imported.sourceDocumentUri, uri);
+  });
+
+  test('scanPdfDirectory retorna candidatos PDF via URI SAF', () async {
+    final serviceWithUriScan = DataService(
+      uriAccessService: _FakeUriAccessService(
+        treeDocs: const [
+          UriDocumentMetadata(
+            displayName: 'Hino.pdf',
+            uri: 'content://tree/root/hino',
+            size: 100,
+            mimeType: 'application/pdf',
+          ),
+          UriDocumentMetadata(
+            displayName: 'nota.txt',
+            uri: 'content://tree/root/nota',
+            size: 30,
+            mimeType: 'text/plain',
+          ),
+        ],
+      ),
+    );
+
+    final scanned = await serviceWithUriScan.scanPdfDirectory('content://tree/root');
+
+    expect(scanned, hasLength(1));
+    expect(scanned.single.displayName, 'Hino.pdf');
+    expect(scanned.single.uri, 'content://tree/root/hino');
+    expect(scanned.single.path, 'saf://content://tree/root/hino');
+  });
+
+  test('importPdfCandidates lê bytes de candidato URI sem filesystem local', () async {
+    const uri = 'content://tree/root/documento';
+    final pdfBytes = Uint8List.fromList('%PDF-1.4\n%%EOF'.codeUnits);
+    final serviceWithUriRead = DataService(
+      uriAccessService: _FakeUriAccessService(bytesByUri: {uri: pdfBytes}),
+    );
+
+    final result = await serviceWithUriRead.importPdfCandidates(
+      candidates: const [
+        PdfImportCandidate(
+          sourceId: 'saf://content://tree/root/documento',
+          displayName: 'documento.pdf',
+          uri: uri,
+          sourceFolderUri: 'content://tree/root',
+          sourceDocumentUri: uri,
+        ),
+      ],
+      tagIds: const [],
+      idPrefix: 'uri-only',
+      generateHash: true,
+    );
+
+    expect(result.importedCount, 1);
+    expect(result.errors, isEmpty);
+    final imported = (await serviceWithUriRead.getPdfs()).single;
+    expect(imported.path, 'saf://content://tree/root/documento');
+    expect(imported.fileHash, isNotNull);
   });
 }

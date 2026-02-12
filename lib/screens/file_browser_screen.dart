@@ -140,7 +140,7 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
         .where((n) => n.isPdf)
         .map(
           (node) => PdfImportCandidate(
-            path: 'saf://${node.uri}',
+            sourceId: 'saf://${node.uri}',
             displayName: node.name,
             uri: node.uri,
             sourceFolderUri: _breadcrumbs.isEmpty ? _treeUri : _breadcrumbs.last.uri,
