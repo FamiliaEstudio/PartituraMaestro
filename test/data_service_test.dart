@@ -316,7 +316,7 @@ void main() {
       StructureTemplate(
         id: 'tpl-1',
         name: 'Míssa Solene',
-        slots: const [
+        slots: [
           SubStructureSlot(id: 'slot-1', name: 'Entrada'),
         ],
       ),
@@ -327,7 +327,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-2',
           name: 'missa solene',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-2', name: 'Ofertório'),
           ],
         ),
@@ -342,7 +342,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-invalid-slot',
           name: 'Missa',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-empty', name: '   '),
           ],
         ),
@@ -357,7 +357,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-dup-slot',
           name: 'Missa de testes',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-1', name: 'Glória'),
             SubStructureSlot(id: 'slot-2', name: 'gloria'),
           ],
