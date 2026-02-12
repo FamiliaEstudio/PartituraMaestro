@@ -3,6 +3,8 @@ class PdfFile {
   String path;
   String title;
   String? uri;
+  String? sourceFolderUri;
+  String? sourceDocumentUri;
   String displayName;
   String? fileHash;
   List<String> tagIds;
@@ -12,6 +14,8 @@ class PdfFile {
     required this.path,
     required this.title,
     String? uri,
+    this.sourceFolderUri,
+    this.sourceDocumentUri,
     String? displayName,
     this.fileHash,
     List<String>? tagIds,
@@ -25,6 +29,8 @@ class PdfFile {
       'path': path,
       'title': title,
       'uri': uri,
+      'source_folder_uri': sourceFolderUri,
+      'source_document_uri': sourceDocumentUri,
       'display_name': displayName,
       'file_hash': fileHash,
     };

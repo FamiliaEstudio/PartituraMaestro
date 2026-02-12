@@ -5,7 +5,7 @@ import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
   static const _databaseName = 'partitura_maestro.db';
-  static const _databaseVersion = 3;
+  static const _databaseVersion = 4;
 
   static final DatabaseService _instance = DatabaseService._internal();
 
@@ -50,6 +50,8 @@ class DatabaseService {
         path TEXT NOT NULL,
         title TEXT NOT NULL,
         uri TEXT,
+        source_folder_uri TEXT,
+        source_document_uri TEXT,
         display_name TEXT NOT NULL,
         file_hash TEXT
       );
@@ -219,5 +221,10 @@ class DatabaseService {
         await txn.execute('DROP TABLE instance_slot_selection_old;');
       });
     }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE pdf_files ADD COLUMN source_folder_uri TEXT;');
+      await db.execute('ALTER TABLE pdf_files ADD COLUMN source_document_uri TEXT;');
+    }
+
   }
 }

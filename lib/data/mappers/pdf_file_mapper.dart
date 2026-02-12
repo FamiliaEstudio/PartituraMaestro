@@ -8,6 +8,8 @@ class PdfFileMapper {
         title: dto.title,
         displayName: dto.displayName,
         uri: dto.uri,
+        sourceFolderUri: dto.sourceFolderUri,
+        sourceDocumentUri: dto.sourceDocumentUri,
         fileHash: dto.fileHash,
         tagIds: dto.tagIds,
       );
@@ -18,6 +20,8 @@ class PdfFileMapper {
         title: model.title,
         displayName: model.displayName,
         uri: model.uri,
+        sourceFolderUri: model.sourceFolderUri,
+        sourceDocumentUri: model.sourceDocumentUri,
         fileHash: model.fileHash,
         tagIds: model.tagIds,
       );
