@@ -17,7 +17,7 @@ class CreateTemplateScreen extends StatefulWidget {
 }
 
 class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
-    final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final List<SubStructureSlot> _slots = [];
   List<Tag> _allTags = [];
@@ -89,15 +89,18 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                 ElevatedButton(
                   onPressed: () {
                     final slotName = slotNameController.text.trim();
-                    if (slotName.isEmpty) return;
+                    if (slotName.isEmpty) {
+                      _showInfo('Toda sub-estrutura precisa ter um nome válido.');
+                      return;
+                    }
+                    final dataService = context.read<DataService>();
+                    final normalizedSlotName = dataService.normalizeComparableText(slotName);
                     final duplicate = _slots.any((slot) {
                       if (editIndex != null && _slots[editIndex].id == slot.id) return false;
-                      return slot.name.toLowerCase() == slotName.toLowerCase();
+                      return dataService.normalizeComparableText(slot.name) == normalizedSlotName;
                     });
                     if (duplicate) {
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text('Não é permitido nome de sub-estrutura duplicado no mesmo template.')),
-                      );
+                      _showInfo('Não é permitido nome de sub-estrutura duplicado no mesmo template.');
                       return;
                     }
 
@@ -138,14 +141,26 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
       slots: List<SubStructureSlot>.from(_slots),
     );
 
-    if (_isEditing) {
-      await context.read<DataService>().updateTemplate(template);
-    } else {
-      await context.read<CreateTemplate>()(template);
+    try {
+      if (_isEditing) {
+        await context.read<DataService>().updateTemplate(template);
+      } else {
+        await context.read<CreateTemplate>()(template);
+      }
+    } on TemplateNameConflictException catch (error) {
+      _showInfo(error.message);
+      return;
+    } on SlotNameValidationException catch (error) {
+      _showInfo(error.message);
+      return;
     }
 
     if (!mounted) return;
     Navigator.pop(context);
+  }
+
+  void _showInfo(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

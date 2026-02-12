@@ -18,10 +18,13 @@ import 'storage/database_service.dart';
 import 'uri_access_service.dart';
 
 class ImportError {
+  final String code;
   final String source;
-  final String reason;
+  final String cause;
 
-  const ImportError({required this.source, required this.reason});
+  String get reason => '[$code] $cause';
+
+  const ImportError({required this.code, required this.source, required this.cause});
 }
 
 class ImportResult {
@@ -66,6 +69,24 @@ class TagNameConflictException implements Exception {
   final String message;
 
   const TagNameConflictException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class TemplateNameConflictException implements Exception {
+  final String message;
+
+  const TemplateNameConflictException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+class SlotNameValidationException implements Exception {
+  final String message;
+
+  const SlotNameValidationException(this.message);
 
   @override
   String toString() => message;
@@ -125,7 +146,7 @@ class DataService {
     final db = await _db;
     await db.insert(
       'tags',
-TagMapper.toDto(tag).toMap(),
+      TagMapper.toDto(tag).toMap(),
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
@@ -216,7 +237,7 @@ TagMapper.toDto(tag).toMap(),
     return usage[tagId] ?? const TagUsageStats(pdfCount: 0, slotCount: 0);
   }
 
-  String normalizeTagName(
+  String normalizeComparableText(
     String value, {
     bool caseFold = true,
     bool removeDiacritics = true,
@@ -231,13 +252,53 @@ TagMapper.toDto(tag).toMap(),
     return normalized;
   }
 
+  String normalizeTagName(
+    String value, {
+    bool caseFold = true,
+    bool removeDiacritics = true,
+  }) {
+    return normalizeComparableText(
+      value,
+      caseFold: caseFold,
+      removeDiacritics: removeDiacritics,
+    );
+  }
+
   Future<void> _assertTagNameAvailable(String name, {String? excludeTagId}) async {
-    final normalizedCandidate = normalizeTagName(name);
+    final normalizedCandidate = normalizeComparableText(name);
     final tags = await getTags();
     for (final existing in tags) {
       if (excludeTagId != null && existing.id == excludeTagId) continue;
-      if (normalizeTagName(existing.name) == normalizedCandidate) {
+      if (normalizeComparableText(existing.name) == normalizedCandidate) {
         throw TagNameConflictException('Já existe uma tag equivalente: "${existing.name}".');
+      }
+    }
+  }
+
+  Future<void> _validateTemplate(StructureTemplate template, {String? excludeTemplateId}) async {
+    final normalizedName = template.name.trim();
+    if (normalizedName.isEmpty) {
+      throw const TemplateNameConflictException('Informe um nome de template válido.');
+    }
+
+    final candidate = normalizeComparableText(normalizedName);
+    final templates = await getTemplates();
+    for (final existing in templates) {
+      if (excludeTemplateId != null && existing.id == excludeTemplateId) continue;
+      if (normalizeComparableText(existing.name) == candidate) {
+        throw TemplateNameConflictException('Já existe um template equivalente: "${existing.name}".');
+      }
+    }
+
+    final usedSlotNames = <String>{};
+    for (final slot in template.slots) {
+      final slotName = slot.name.trim();
+      if (slotName.isEmpty) {
+        throw const SlotNameValidationException('Toda sub-estrutura precisa ter um nome válido.');
+      }
+      final normalizedSlotName = normalizeComparableText(slotName);
+      if (!usedSlotNames.add(normalizedSlotName)) {
+        throw SlotNameValidationException('Não é permitido nome de sub-estrutura duplicado no mesmo template.');
       }
     }
   }
@@ -423,19 +484,19 @@ TagMapper.toDto(tag).toMap(),
       final source = candidate.path;
 
       if (!candidate.displayName.toLowerCase().endsWith('.pdf') && !source.toLowerCase().endsWith('.pdf')) {
-        errors.add(ImportError(source: source, reason: 'Arquivo não é PDF.'));
+        errors.add(ImportError(code: 'NOT_PDF', source: source, cause: 'Arquivo não é PDF.'));
         continue;
       }
 
       final isSafCandidate = candidate.uri != null && candidate.uri!.startsWith('content://');
       final file = File(source);
       if (!isSafCandidate && !await file.exists()) {
-        errors.add(ImportError(source: source, reason: 'Arquivo inacessível.'));
+        errors.add(ImportError(code: 'INACCESSIBLE', source: source, cause: 'Arquivo inacessível.'));
         continue;
       }
 
       if (existingPaths.contains(source)) {
-        errors.add(ImportError(source: source, reason: 'Arquivo já importado (mesmo caminho).'));
+        errors.add(ImportError(code: 'DUPLICATE_PATH', source: source, cause: 'Arquivo já importado (mesmo caminho).'));
         continue;
       }
 
@@ -444,18 +505,18 @@ TagMapper.toDto(tag).toMap(),
         try {
           final bytes = isSafCandidate ? await readUriBytes(candidate.uri!) : await file.readAsBytes();
           if (bytes == null) {
-            errors.add(ImportError(source: source, reason: 'Falha ao acessar arquivo por URI.'));
+            errors.add(ImportError(code: 'URI_ACCESS_FAILED', source: source, cause: 'Falha ao acessar arquivo por URI.'));
             continue;
           }
           hash = sha256.convert(bytes).toString();
         } catch (_) {
-          errors.add(ImportError(source: source, reason: 'Falha ao calcular hash do arquivo.'));
+          errors.add(ImportError(code: 'HASH_FAILED', source: source, cause: 'Falha ao calcular hash do arquivo.'));
           continue;
         }
       }
 
       if (hash != null && existingHashes.contains(hash)) {
-        errors.add(ImportError(source: source, reason: 'Arquivo duplicado detectado por hash.'));
+        errors.add(ImportError(code: 'DUPLICATE_HASH', source: source, cause: 'Arquivo duplicado detectado por hash.'));
         continue;
       }
 
@@ -480,8 +541,9 @@ TagMapper.toDto(tag).toMap(),
         if (!permissionGranted) {
           errors.add(
             ImportError(
+              code: 'URI_PERMISSION_NOT_PERSISTED',
               source: source,
-              reason: 'Acesso URI não pôde ser persistido. Relocalize se necessário após reiniciar.',
+              cause: 'Acesso URI não pôde ser persistido. Relocalize se necessário após reiniciar.',
             ),
           );
         }
@@ -529,20 +591,22 @@ TagMapper.toDto(tag).toMap(),
   }
 
   Future<void> addTemplate(StructureTemplate template) async {
+    await _validateTemplate(template);
     final db = await _db;
     await db.transaction((txn) async {
       await txn.insert('structure_templates', {
         'id': template.id,
-        'name': template.name,
+        'name': template.name.trim(),
       });
       await _upsertSlotsForTemplate(txn, template);
     });
   }
 
   Future<void> updateTemplate(StructureTemplate template) async {
+    await _validateTemplate(template, excludeTemplateId: template.id);
     final db = await _db;
     await db.transaction((txn) async {
-      await txn.update('structure_templates', {'name': template.name}, where: 'id = ?', whereArgs: [template.id]);
+      await txn.update('structure_templates', {'name': template.name.trim()}, where: 'id = ?', whereArgs: [template.id]);
       await txn.delete(
         'sub_structure_slot_tags',
         where: 'slot_id IN (SELECT id FROM sub_structure_slots WHERE template_id = ?)',
@@ -564,7 +628,7 @@ TagMapper.toDto(tag).toMap(),
       await txn.insert('sub_structure_slots', {
         'id': slot.id,
         'template_id': template.id,
-        'name': slot.name,
+        'name': slot.name.trim(),
         'position': i,
       });
 

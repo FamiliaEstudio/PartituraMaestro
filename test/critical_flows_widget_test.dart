@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:pastoral_pdf_organizer/models/pdf_file.dart';
 import 'package:pastoral_pdf_organizer/models/structure_instance.dart';
 import 'package:pastoral_pdf_organizer/models/structure_template.dart';
 import 'package:pastoral_pdf_organizer/models/tag.dart';
+import 'package:pastoral_pdf_organizer/domain/usecases/create_template.dart';
 import 'package:pastoral_pdf_organizer/screens/create_template_screen.dart';
 import 'package:pastoral_pdf_organizer/screens/import_pdf_screen.dart';
 import 'package:pastoral_pdf_organizer/screens/instance_selection_screen.dart';
@@ -67,6 +69,63 @@ void main() {
     final templates = await service.getTemplates();
     expect(templates, hasLength(1));
     expect(templates.first.slots.map((e) => e.name), ['Entrada']);
+  });
+
+
+
+  testWidgets('formulário de template exibe erro para nome de template duplicado', (tester) async {
+    await service.addTemplate(
+      StructureTemplate(
+        id: 'tpl-existing',
+        name: 'Missa Solene',
+        slots: const [SubStructureSlot(id: 'slot-existing', name: 'Entrada')],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<DataService>.value(value: service),
+          Provider<CreateTemplate>(create: (_) => CreateTemplate(service)),
+        ],
+        child: const MaterialApp(home: CreateTemplateScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField), 'míssa solene');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Adicionar Sub-estrutura'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Ato Penitencial');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Adicionar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Salvar Estrutura'));
+    await tester.pump();
+
+    expect(find.text('Já existe um template equivalente: "Missa Solene".'), findsOneWidget);
+  });
+
+  testWidgets('formulário de template exibe erro ao salvar sub-estrutura sem nome', (tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<DataService>.value(value: service),
+          Provider<CreateTemplate>(create: (_) => CreateTemplate(service)),
+        ],
+        child: const MaterialApp(home: CreateTemplateScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField), 'Missa');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Adicionar Sub-estrutura'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Adicionar'));
+    await tester.pump();
+
+    expect(find.text('Toda sub-estrutura precisa ter um nome válido.'), findsOneWidget);
   });
 
   testWidgets('seleção de slot lista apenas PDFs com todas tags exigidas', (tester) async {
