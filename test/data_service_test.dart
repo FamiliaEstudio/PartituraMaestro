@@ -147,8 +147,8 @@ void main() {
     expect(
       duplicateResult.errors.map((e) => e.reason),
       containsAll([
-        'Arquivo já importado (mesmo caminho).',
-        'Arquivo duplicado detectado por hash.',
+        '[DUPLICATE_PATH] Arquivo já importado (mesmo caminho).',
+        '[DUPLICATE_HASH] Arquivo duplicado detectado por hash.',
       ]),
     );
 
@@ -264,6 +264,64 @@ void main() {
     expect(scanned.single.displayName, 'Hino.pdf');
     expect(scanned.single.uri, 'content://tree/root/hino');
     expect(scanned.single.path, 'saf://content://tree/root/hino');
+  });
+
+
+
+  test('bloqueia template duplicado ignorando caixa e acento', () async {
+    await service.addTemplate(
+      StructureTemplate(
+        id: 'tpl-1',
+        name: 'Míssa Solene',
+        slots: const [
+          SubStructureSlot(id: 'slot-1', name: 'Entrada'),
+        ],
+      ),
+    );
+
+    expect(
+      () => service.addTemplate(
+        StructureTemplate(
+          id: 'tpl-2',
+          name: 'missa solene',
+          slots: const [
+            SubStructureSlot(id: 'slot-2', name: 'Ofertório'),
+          ],
+        ),
+      ),
+      throwsA(isA<TemplateNameConflictException>()),
+    );
+  });
+
+  test('bloqueia template com slot sem nome válido', () async {
+    expect(
+      () => service.addTemplate(
+        StructureTemplate(
+          id: 'tpl-invalid-slot',
+          name: 'Missa',
+          slots: const [
+            SubStructureSlot(id: 'slot-empty', name: '   '),
+          ],
+        ),
+      ),
+      throwsA(isA<SlotNameValidationException>()),
+    );
+  });
+
+  test('bloqueia template com nomes de slot duplicados ignorando caixa e acento', () async {
+    expect(
+      () => service.addTemplate(
+        StructureTemplate(
+          id: 'tpl-dup-slot',
+          name: 'Missa de testes',
+          slots: const [
+            SubStructureSlot(id: 'slot-1', name: 'Glória'),
+            SubStructureSlot(id: 'slot-2', name: 'gloria'),
+          ],
+        ),
+      ),
+      throwsA(isA<SlotNameValidationException>()),
+    );
   });
 
   test('importPdfCandidates lê bytes de candidato URI sem filesystem local', () async {
