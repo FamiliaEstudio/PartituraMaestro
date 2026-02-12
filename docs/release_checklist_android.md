@@ -1,5 +1,15 @@
 # Checklist de publicação Android
 
+## 0) Validar estrutura Android recriada
+
+- `android/app/build.gradle` existe com:
+  - `namespace = "com.partituramaestro.pastoral_pdf_organizer"`
+  - `applicationId = "com.partituramaestro.pastoral_pdf_organizer"`
+  - `signingConfigs.release` ativo
+- `android/app/src/main/AndroidManifest.xml` com `android:label="Partitura Maestro"`
+- `android/app/src/main/kotlin/com/partituramaestro/pastoral_pdf_organizer/MainActivity.kt` presente
+- `android/key.properties` **não versionado** (definido no `android/.gitignore`)
+
 ## 1) Assinatura (keystore)
 
 1. Gerar keystore de produção:
@@ -13,14 +23,15 @@
    keyAlias=upload
    storeFile=app/upload-keystore.jks
    ```
-3. Configurar `signingConfigs.release` e `buildTypes.release` no `android/app/build.gradle`.
+3. Confirmar que `signingConfigs.release` e `buildTypes.release` estão configurados no `android/app/build.gradle`.
 
 ## 2) Versionamento
 
 1. Atualizar versão em `pubspec.yaml` no formato `x.y.z+build`.
 2. Validar changelog interno e impacto de migração de banco.
-3. Conferir `flutter build appbundle --release` com flavor de release:
+3. Gerar binários de release:
    ```bash
+   flutter build apk --release --dart-define=APP_FLAVOR=release
    flutter build appbundle --release --dart-define=APP_FLAVOR=release
    ```
 
