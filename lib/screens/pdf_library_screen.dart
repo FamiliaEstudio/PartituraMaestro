@@ -18,6 +18,26 @@ class PdfLibraryScreen extends StatefulWidget {
 
 class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
   final DataService _dataService = DataService();
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadData();
+  }
+
+  Future<Map<String, dynamic>> _loadData() async {
+    final pdfs = await _dataService.getPdfs();
+    final tags = await _dataService.getTags();
+    return {'pdfs': pdfs, 'tags': tags};
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _future = _loadData();
+    });
+    widget.onDataChanged();
+  }
 
   Future<void> _addPdf() async {
     final result = await FilePicker.platform.pickFiles(
@@ -32,7 +52,7 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
     final selectedTagIds = await _openTagSelector();
     if (selectedTagIds == null) return;
 
-    _dataService.addPdf(
+    await _dataService.addPdf(
       PdfFile(
         id: const Uuid().v4(),
         path: filePath,
@@ -41,13 +61,14 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
       ),
     );
 
-    setState(() {});
-    widget.onDataChanged();
+    await _reload();
   }
 
-  Future<List<String>?> _openTagSelector({List<String>? initialTagIds}) {
-    final allTags = _dataService.getTags();
+  Future<List<String>?> _openTagSelector({List<String>? initialTagIds}) async {
+    final allTags = await _dataService.getTags();
     final selected = [...?initialTagIds];
+
+    if (!mounted) return null;
 
     return showModalBottomSheet<List<String>>(
       context: context,
@@ -63,8 +84,7 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            if (allTags.isEmpty)
-              const Text('Crie tags na aba "Tags" antes de classificar PDFs.'),
+            if (allTags.isEmpty) const Text('Crie tags na aba "Tags" antes de classificar PDFs.'),
             ...allTags.map(
               (tag) => StatefulBuilder(
                 builder: (context, setModalState) => CheckboxListTile(
@@ -100,11 +120,8 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
     final updated = await _openTagSelector(initialTagIds: pdf.tagIds);
     if (updated == null) return;
 
-    setState(() {
-      pdf.tagIds = updated;
-    });
-
-    widget.onDataChanged();
+    await _dataService.updatePdfTags(pdf.id, updated);
+    await _reload();
   }
 
   String _tagNames(List<String> ids, List<Tag> allTags) {
@@ -117,9 +134,6 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pdfs = _dataService.getPdfs();
-    final tags = _dataService.getTags();
-
     return Scaffold(
       appBar: AppBar(title: const Text('Biblioteca de PDFs')),
       floatingActionButton: FloatingActionButton.extended(
@@ -127,30 +141,44 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
         icon: const Icon(Icons.upload_file),
         label: const Text('Adicionar PDF'),
       ),
-      body: pdfs.isEmpty
-          ? const Center(
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final pdfs = (snapshot.data?['pdfs'] as List<PdfFile>?) ?? [];
+          final tags = (snapshot.data?['tags'] as List<Tag>?) ?? [];
+
+          if (pdfs.isEmpty) {
+            return const Center(
               child: Text('Nenhum PDF cadastrado.'),
-            )
-          : ListView.builder(
-              itemCount: pdfs.length,
-              itemBuilder: (context, index) {
-                final pdf = pdfs[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: ListTile(
-                    title: Text(pdf.title),
-                    subtitle: Text(
-                      '${_tagNames(pdf.tagIds, tags)}\n${pdf.path}',
-                    ),
-                    isThreeLine: true,
-                    trailing: IconButton(
-                      onPressed: () => _editPdfTags(pdf),
-                      icon: const Icon(Icons.edit),
-                    ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: pdfs.length,
+            itemBuilder: (context, index) {
+              final pdf = pdfs[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  title: Text(pdf.title),
+                  subtitle: Text(
+                    '${_tagNames(pdf.tagIds, tags)}\n${pdf.path}',
                   ),
-                );
-              },
-            ),
+                  isThreeLine: true,
+                  trailing: IconButton(
+                    onPressed: () => _editPdfTags(pdf),
+                    icon: const Icon(Icons.edit),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
