@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/pdf_file.dart';
 import '../models/structure_instance.dart';
@@ -17,8 +18,7 @@ class InstanceSelectionScreen extends StatefulWidget {
 }
 
 class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
-  final DataService _dataService = DataService();
-  late Future<Map<String, dynamic>> _future;
+    late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
@@ -27,11 +27,11 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
   }
 
   Future<Map<String, dynamic>> _loadData() async {
-    final latest = await _dataService.getInstance(widget.instance.id);
+    final latest = await context.read<DataService>().getInstance(widget.instance.id);
     final instance = latest ?? widget.instance;
-    final pdfs = await _dataService.getPdfs();
-    final tags = await _dataService.getTags();
-    final selections = await _dataService.getInstanceSelections(instance.id);
+    final pdfs = await context.read<DataService>().getPdfs();
+    final tags = await context.read<DataService>().getTags();
+    final selections = await context.read<DataService>().getInstanceSelections(instance.id);
     return {
       'instance': instance,
       'template': instance.templateSnapshot,
@@ -46,7 +46,7 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
   }
 
   Future<void> _selectPdfForSlot(String slotId, List<String> requiredTags) async {
-    final candidates = await _dataService.findPdfsByTags(requiredTags);
+    final candidates = await context.read<DataService>().findPdfsByTags(requiredTags);
     if (!mounted) return;
 
     await showModalBottomSheet(
@@ -65,7 +65,7 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
               leading: const Icon(Icons.clear),
               title: const Text('Remover seleção deste slot'),
               onTap: () async {
-                await _dataService.clearInstanceSelection(widget.instance.id, slotId);
+                await context.read<DataService>().clearInstanceSelection(widget.instance.id, slotId);
                 if (!context.mounted) return;
                 Navigator.pop(context);
                 await _refresh();
@@ -75,7 +75,7 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
               (pdf) => ListTile(
                 title: Text(pdf.title),
                 onTap: () async {
-                  await _dataService.updateInstanceSelection(widget.instance.id, slotId, pdf.id);
+                  await context.read<DataService>().updateInstanceSelection(widget.instance.id, slotId, pdf.id);
                   if (!context.mounted) return;
                   Navigator.pop(context);
                   await _refresh();
@@ -102,9 +102,9 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
           IconButton(
             tooltip: 'Duplicar instância',
             onPressed: () async {
-              final current = await _dataService.getInstance(widget.instance.id);
+              final current = await context.read<DataService>().getInstance(widget.instance.id);
               if (current == null) return;
-              await _dataService.duplicateInstance(current);
+              await context.read<DataService>().duplicateInstance(current);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Instância duplicada com sucesso.')));
             },
@@ -135,7 +135,7 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
                 title: const Text('Marcar como concluída'),
                 value: instance.isCompleted,
                 onChanged: (value) async {
-                  await _dataService.updateInstanceMeta(instanceId: instance.id, isCompleted: value);
+                  await context.read<DataService>().updateInstanceMeta(instanceId: instance.id, isCompleted: value);
                   await _refresh();
                 },
               ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../domain/usecases/create_template.dart';
 import '../models/structure_template.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
@@ -15,8 +17,7 @@ class CreateTemplateScreen extends StatefulWidget {
 }
 
 class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
-  final DataService _dataService = DataService();
-  final _formKey = GlobalKey<FormState>();
+    final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final List<SubStructureSlot> _slots = [];
   List<Tag> _allTags = [];
@@ -37,7 +38,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   }
 
   Future<void> _loadTags() async {
-    final tags = await _dataService.getTags();
+    final tags = await context.read<DataService>().getTags();
     if (!mounted) return;
     setState(() {
       _allTags = tags;
@@ -138,9 +139,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     );
 
     if (_isEditing) {
-      await _dataService.updateTemplate(template);
+      await context.read<DataService>().updateTemplate(template);
     } else {
-      await _dataService.addTemplate(template);
+      await context.read<CreateTemplate>()(template);
     }
 
     if (!mounted) return;

@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../domain/usecases/find_candidate_pdfs.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
 
@@ -19,8 +21,7 @@ class ImportPdfScreen extends StatefulWidget {
 }
 
 class _ImportPdfScreenState extends State<ImportPdfScreen> {
-  final DataService _dataService = DataService();
-
+  
   ImportMode _mode = ImportMode.files;
   bool _loading = false;
   bool _generateHash = true;
@@ -30,7 +31,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
   List<ImportError> _errors = [];
 
   Future<void> _pickFiles() async {
-    final hasPermission = await _dataService.ensureAndroidStoragePermission();
+    final hasPermission = await context.read<DataService>().ensureAndroidStoragePermission();
     if (!hasPermission) {
       _showMsg('Permissão de armazenamento negada.');
       return;
@@ -63,7 +64,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
   }
 
   Future<void> _pickFolderAndScan() async {
-    final hasPermission = await _dataService.ensureAndroidStoragePermission();
+    final hasPermission = await context.read<DataService>().ensureAndroidStoragePermission();
     if (!hasPermission) {
       _showMsg('Permissão de armazenamento negada.');
       return;
@@ -78,7 +79,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
     });
 
     try {
-      final scanned = await _dataService.scanPdfDirectory(directory);
+      final scanned = await context.read<FindCandidatePdfs>()(directory);
       setState(() {
         _candidates = scanned;
         _selectedPaths = scanned.map((e) => e.path).toSet();
@@ -93,7 +94,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
   }
 
   Future<void> _selectTags() async {
-    final allTags = await _dataService.getTags();
+    final allTags = await context.read<DataService>().getTags();
     if (!mounted) return;
 
     final temp = [..._selectedTagIds];
@@ -159,7 +160,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
       _errors = [];
     });
 
-    final result = await _dataService.importPdfCandidates(
+    final result = await context.read<DataService>().importPdfCandidates(
       candidates: selected,
       tagIds: _selectedTagIds,
       idPrefix: const Uuid().v4(),
@@ -194,7 +195,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Tag>>(
-      future: _dataService.getTags(),
+      future: context.read<DataService>().getTags(),
       builder: (context, tagSnapshot) {
         final tags = tagSnapshot.data ?? [];
 

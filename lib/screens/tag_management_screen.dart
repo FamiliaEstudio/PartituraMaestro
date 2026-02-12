@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/tag.dart';
@@ -21,8 +22,7 @@ class TagManagementScreen extends StatefulWidget {
 }
 
 class _TagManagementScreenState extends State<TagManagementScreen> {
-  final DataService _dataService = DataService();
-  final TextEditingController _controller = TextEditingController();
+    final TextEditingController _controller = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
   late Future<List<_TagViewData>> _tagsFuture;
@@ -35,8 +35,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   Future<List<_TagViewData>> _loadTagData() async {
-    final tags = await _dataService.getTags();
-    final usageByTag = await _dataService.getTagUsageStats();
+    final tags = await context.read<DataService>().getTags();
+    final usageByTag = await context.read<DataService>().getTagUsageStats();
 
     final items = tags
         .map(
@@ -50,7 +50,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     items.sort(
       (a, b) => _dataService
           .normalizeTagName(a.tag.name)
-          .compareTo(_dataService.normalizeTagName(b.tag.name)),
+          .compareTo(context.read<DataService>().normalizeTagName(b.tag.name)),
     );
     return items;
   }
@@ -72,7 +72,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
     if (name.isEmpty) return;
 
     try {
-      await _dataService.addTag(Tag(id: const Uuid().v4(), name: name));
+      await context.read<DataService>().addTag(Tag(id: const Uuid().v4(), name: name));
       _controller.clear();
       await _reload();
     } on TagNameConflictException catch (error) {
@@ -96,7 +96,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
     if (value == null || value.isEmpty) return;
     try {
-      await _dataService.updateTag(tag.id, value);
+      await context.read<DataService>().updateTag(tag.id, value);
       await _reload();
     } on TagNameConflictException catch (error) {
       _showInfo(error.message);
@@ -104,8 +104,8 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
   }
 
   Future<void> _deleteTag(Tag tag) async {
-    final usage = await _dataService.getTagUsage(tag.id);
-    final tags = await _dataService.getTags();
+    final usage = await context.read<DataService>().getTagUsage(tag.id);
+    final tags = await context.read<DataService>().getTags();
     final replacementOptions = tags.where((t) => t.id != tag.id).toList();
 
     if (!mounted) return;
@@ -121,7 +121,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
     if (result == null) return;
 
-    await _dataService.deleteTagWithStrategy(
+    await context.read<DataService>().deleteTagWithStrategy(
       tagId: tag.id,
       replacementTagId: result.replacementTagId,
     );
@@ -130,14 +130,14 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
 
   Map<String, List<_TagViewData>> _groupAlphabetically(List<_TagViewData> tags) {
     final filtered = tags.where((item) {
-      final normalizedName = _dataService.normalizeTagName(item.tag.name);
-      final normalizedQuery = _dataService.normalizeTagName(_searchQuery);
+      final normalizedName = context.read<DataService>().normalizeTagName(item.tag.name);
+      final normalizedQuery = context.read<DataService>().normalizeTagName(_searchQuery);
       return normalizedQuery.isEmpty || normalizedName.contains(normalizedQuery);
     }).toList();
 
     final grouped = <String, List<_TagViewData>>{};
     for (final item in filtered) {
-      final normalized = _dataService.normalizeTagName(item.tag.name, caseFold: false);
+      final normalized = context.read<DataService>().normalizeTagName(item.tag.name, caseFold: false);
       final firstChar = normalized.isEmpty ? '#' : normalized.substring(0, 1).toUpperCase();
       final key = RegExp(r'[A-Z]').hasMatch(firstChar) ? firstChar : '#';
       grouped.putIfAbsent(key, () => []).add(item);
@@ -147,7 +147,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       entry.value.sort(
         (a, b) => _dataService
             .normalizeTagName(a.tag.name)
-            .compareTo(_dataService.normalizeTagName(b.tag.name)),
+            .compareTo(context.read<DataService>().normalizeTagName(b.tag.name)),
       );
     }
 
