@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/usecases/find_candidate_pdfs.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
+import 'file_browser_screen.dart';
 
 enum ImportMode { files, folder }
 
@@ -59,6 +60,21 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
     setState(() {
       _candidates = selected;
       _selectedPaths = selected.map((e) => e.path).toSet();
+      _errors = [];
+    });
+  }
+
+  Future<void> _pickWithAndroidBrowser() async {
+    final selection = await Navigator.push<FileBrowserSelection>(
+      context,
+      MaterialPageRoute(builder: (_) => const FileBrowserScreen()),
+    );
+    if (selection == null) return;
+
+    setState(() {
+      _candidates = selection.candidates;
+      _selectedPaths = selection.candidates.map((e) => e.path).toSet();
+      _selectedTagIds = selection.tagIds;
       _errors = [];
     });
   }
@@ -245,6 +261,12 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
                       icon: const Icon(Icons.local_offer),
                       label: const Text('Tags em lote'),
                     ),
+                    if (Platform.isAndroid)
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _pickWithAndroidBrowser,
+                        icon: const Icon(Icons.phone_android),
+                        label: const Text('Navegador Android (SAF)'),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),

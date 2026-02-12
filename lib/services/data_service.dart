@@ -35,11 +35,15 @@ class PdfImportCandidate {
   final String path;
   final String displayName;
   final String? uri;
+  final String? sourceFolderUri;
+  final String? sourceDocumentUri;
 
   const PdfImportCandidate({
     required this.path,
     required this.displayName,
     this.uri,
+    this.sourceFolderUri,
+    this.sourceDocumentUri,
   });
 }
 
@@ -313,13 +317,21 @@ TagMapper.toDto(tag).toMap(),
     });
   }
 
-  Future<void> updatePdfLocation(String pdfId, String newPath, {String? uri}) async {
+  Future<void> updatePdfLocation(
+    String pdfId,
+    String newPath, {
+    String? uri,
+    String? sourceFolderUri,
+    String? sourceDocumentUri,
+  }) async {
     final db = await _db;
     await db.update(
       'pdf_files',
       {
         'path': newPath,
         'uri': uri,
+        'source_folder_uri': sourceFolderUri,
+        'source_document_uri': sourceDocumentUri,
       },
       where: 'id = ?',
       whereArgs: [pdfId],
@@ -408,8 +420,9 @@ TagMapper.toDto(tag).toMap(),
         continue;
       }
 
+      final isSafCandidate = candidate.uri != null && candidate.uri!.startsWith('content://');
       final file = File(source);
-      if (!await file.exists()) {
+      if (!isSafCandidate && !await file.exists()) {
         errors.add(ImportError(source: source, reason: 'Arquivo inacessível.'));
         continue;
       }
@@ -422,7 +435,11 @@ TagMapper.toDto(tag).toMap(),
       String? hash;
       if (generateHash) {
         try {
-          final bytes = await file.readAsBytes();
+          final bytes = isSafCandidate ? await readUriBytes(candidate.uri!) : await file.readAsBytes();
+          if (bytes == null) {
+            errors.add(ImportError(source: source, reason: 'Falha ao acessar arquivo por URI.'));
+            continue;
+          }
           hash = sha256.convert(bytes).toString();
         } catch (_) {
           errors.add(ImportError(source: source, reason: 'Falha ao calcular hash do arquivo.'));
@@ -446,6 +463,8 @@ TagMapper.toDto(tag).toMap(),
           displayName: candidate.displayName,
           fileHash: hash,
           tagIds: tagIds,
+          sourceFolderUri: candidate.sourceFolderUri,
+          sourceDocumentUri: candidate.sourceDocumentUri,
         ),
       );
 

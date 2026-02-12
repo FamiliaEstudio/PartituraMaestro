@@ -5,6 +5,7 @@ import '../models/pdf_file.dart';
 import '../domain/usecases/assign_pdf_tags.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
+import 'file_browser_screen.dart';
 import 'import_pdf_screen.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -40,11 +41,56 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
   }
 
   Future<void> _openImportScreen() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ImportPdfScreen(onImported: _reload),
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.upload_file),
+              title: const Text('Importação tradicional'),
+              onTap: () => Navigator.pop(context, 'classic'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.phone_android),
+              title: const Text('Navegador Android-first (SAF)'),
+              onTap: () => Navigator.pop(context, 'saf'),
+            ),
+          ],
+        ),
       ),
+    );
+
+    if (!mounted || action == null) return;
+
+    if (action == 'classic') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ImportPdfScreen(onImported: _reload),
+        ),
+      );
+      await _reload();
+      return;
+    }
+
+    final selection = await Navigator.push<FileBrowserSelection>(
+      context,
+      MaterialPageRoute(builder: (_) => const FileBrowserScreen()),
+    );
+    if (selection == null) return;
+
+    final result = await context.read<DataService>().importPdfCandidates(
+      candidates: selection.candidates,
+      tagIds: selection.tagIds,
+      idPrefix: DateTime.now().millisecondsSinceEpoch.toString(),
+      generateHash: true,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${result.importedCount} arquivo(s) importado(s). ${result.errors.length} erro(s).')),
     );
     await _reload();
   }

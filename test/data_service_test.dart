@@ -187,4 +187,30 @@ void main() {
     final templateAfterDelete = (await service.getTemplates()).single;
     expect(templateAfterDelete.slots.single.requiredTagIds, isEmpty);
   });
+
+  test('importa candidato SAF e persiste metadados de origem', () async {
+    const uri = 'content://com.example/tree/root/document.pdf';
+
+    final result = await service.importPdfCandidates(
+      candidates: const [
+        PdfImportCandidate(
+          path: 'saf://content://com.example/tree/root/document.pdf',
+          displayName: 'document.pdf',
+          uri: uri,
+          sourceFolderUri: 'content://com.example/tree/root',
+          sourceDocumentUri: uri,
+        ),
+      ],
+      tagIds: const [],
+      idPrefix: 'saf',
+      generateHash: false,
+    );
+
+    expect(result.importedCount, 1);
+
+    final imported = (await service.getPdfs()).single;
+    expect(imported.uri, uri);
+    expect(imported.sourceFolderUri, 'content://com.example/tree/root');
+    expect(imported.sourceDocumentUri, uri);
+  });
 }
