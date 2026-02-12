@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:pastoral_pdf_organizer/models/pdf_file.dart';
 import 'package:pastoral_pdf_organizer/models/structure_instance.dart';
@@ -86,5 +88,103 @@ void main() {
     await service.clearInstanceSelection('inst-1', 'slot-entrada');
     final cleared = await service.getInstanceSelections('inst-1');
     expect(cleared.containsKey('slot-entrada'), isFalse);
+  });
+
+  test('bloqueia importação duplicada por caminho e por hash', () async {
+    final tempDir = await Directory.systemTemp.createTemp('pdf-dup');
+    final originalPath = p.join(tempDir.path, 'original.pdf');
+    final duplicatePath = p.join(tempDir.path, 'duplicate.pdf');
+    final pdfBytes = '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
+
+    await File(originalPath).writeAsBytes(pdfBytes);
+    await File(duplicatePath).writeAsBytes(pdfBytes);
+
+    final initial = await service.importPdfCandidates(
+      candidates: [
+        PdfImportCandidate(path: originalPath, displayName: 'original.pdf'),
+      ],
+      tagIds: const [],
+      idPrefix: 'dup-check',
+    );
+
+    expect(initial.importedCount, 1);
+    expect(initial.errors, isEmpty);
+
+    final duplicateResult = await service.importPdfCandidates(
+      candidates: [
+        PdfImportCandidate(path: originalPath, displayName: 'original.pdf'),
+        PdfImportCandidate(path: duplicatePath, displayName: 'duplicate.pdf'),
+      ],
+      tagIds: const [],
+      idPrefix: 'dup-check',
+    );
+
+    expect(duplicateResult.importedCount, 0);
+    expect(
+      duplicateResult.errors.map((e) => e.reason),
+      containsAll([
+        'Arquivo já importado (mesmo caminho).',
+        'Arquivo duplicado detectado por hash.',
+      ]),
+    );
+
+    await tempDir.delete(recursive: true);
+  });
+
+  test('relocalização atualiza caminho quando arquivo foi movido', () async {
+    await service.addPdf(
+      PdfFile(
+        id: 'pdf-reloc',
+        path: '/tmp/nao-existe.pdf',
+        title: 'Arquivo movido',
+        tagIds: const [],
+      ),
+    );
+
+    await service.updatePdfLocation('pdf-reloc', '/tmp/relocalizado.pdf');
+
+    final updated = (await service.getPdfs()).single;
+    expect(updated.path, '/tmp/relocalizado.pdf');
+    expect(updated.uri, isNull);
+  });
+
+  test('exclusão/substituição de tag atualiza vínculos em PDFs e slots', () async {
+    await service.addTag(Tag(id: 'tag-antiga', name: 'Antiga'));
+    await service.addTag(Tag(id: 'tag-nova', name: 'Nova'));
+
+    await service.addPdf(
+      PdfFile(
+        id: 'pdf-1',
+        path: '/tmp/hino.pdf',
+        title: 'Hino',
+        tagIds: ['tag-antiga'],
+      ),
+    );
+
+    await service.addTemplate(
+      StructureTemplate(
+        id: 'tpl-1',
+        name: 'Missa',
+        slots: [
+          SubStructureSlot(id: 'slot-1', name: 'Entrada', requiredTagIds: ['tag-antiga']),
+        ],
+      ),
+    );
+
+    await service.deleteTagWithStrategy(tagId: 'tag-antiga', replacementTagId: 'tag-nova');
+
+    final pdfAfterReplace = (await service.getPdfs()).single;
+    expect(pdfAfterReplace.tagIds, ['tag-nova']);
+
+    final templateAfterReplace = (await service.getTemplates()).single;
+    expect(templateAfterReplace.slots.single.requiredTagIds, ['tag-nova']);
+
+    await service.deleteTag('tag-nova');
+
+    final pdfAfterDelete = (await service.getPdfs()).single;
+    expect(pdfAfterDelete.tagIds, isEmpty);
+
+    final templateAfterDelete = (await service.getTemplates()).single;
+    expect(templateAfterDelete.slots.single.requiredTagIds, isEmpty);
   });
 }

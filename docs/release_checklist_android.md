@@ -53,3 +53,19 @@
 
 - Monitorar erros de runtime (telemetria opcional habilitada em produção).
 - Registrar hotfix se houver regressão crítica.
+
+
+## 6) Go / No-Go (critério mínimo)
+
+**Go** somente quando todos os itens abaixo estiverem OK:
+
+- Build e análise estática sem erros:
+  - `flutter analyze` limpo (zero erros)
+- Suíte de testes verde:
+  - `flutter test` 100% passando
+- Verificação manual em Android 13+:
+  - importar ao menos 1 PDF pela UI
+  - abrir PDF importado após reiniciar o app
+  - validar fluxo de relocalização quando o arquivo é movido/indisponível
+
+**No-Go** se qualquer item acima falhar.

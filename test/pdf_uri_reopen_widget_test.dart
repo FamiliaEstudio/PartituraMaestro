@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:pastoral_pdf_organizer/models/pdf_file.dart';
 import 'package:pastoral_pdf_organizer/screens/pdf_viewer_screen.dart';
 import 'package:pastoral_pdf_organizer/services/data_service.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +42,33 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
+  });
+
+  testWidgets('mostra ação de relocalização quando arquivo local está ausente', (tester) async {
+    final service = DataService();
+    await service.addPdf(
+      PdfFile(
+        id: 'missing-local',
+        path: '/tmp/inexistente.pdf',
+        title: 'inexistente',
+        displayName: 'inexistente.pdf',
+        tagIds: const [],
+      ),
+    );
+
+    final missingPdf = (await service.getPdfs()).single;
+
+    await tester.pumpWidget(
+      Provider<DataService>.value(
+        value: service,
+        child: MaterialApp(home: PdfViewerScreen(pdfFile: missingPdf)),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Arquivo ausente ou movido. Relocalize para continuar.'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Relocalizar arquivo'), findsOneWidget);
   });
 
   testWidgets('abre PDF via fallback de URI após reinício simulado do app', (tester) async {
