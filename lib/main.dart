@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import 'config/build_config.dart';
 import 'models/structure_instance.dart';
 import 'models/structure_template.dart';
 import 'screens/create_template_screen.dart';
@@ -8,9 +9,11 @@ import 'screens/instance_selection_screen.dart';
 import 'screens/pdf_library_screen.dart';
 import 'screens/tag_management_screen.dart';
 import 'services/data_service.dart';
+import 'services/telemetry_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await TelemetryService.instance.initialize();
   runApp(const MyApp());
 }
 
@@ -26,6 +29,16 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const BootstrapScreen(),
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return Banner(
+          location: BannerLocation.topEnd,
+          message: appFlavor.name.toUpperCase(),
+          color: appFlavor == AppFlavor.release ? Colors.green : Colors.orange,
+          textStyle: const TextStyle(fontSize: 10),
+          child: child,
+        );
+      },
     );
   }
 }
