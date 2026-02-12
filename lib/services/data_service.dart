@@ -29,10 +29,13 @@ class ImportError {
 
 class ImportResult {
   final int importedCount;
+  final int updatedCount;
   final List<ImportError> errors;
 
-  const ImportResult({required this.importedCount, required this.errors});
+  const ImportResult({required this.importedCount, required this.updatedCount, required this.errors});
 }
+
+enum DuplicateImportBehavior { skip, mergeTags }
 
 class PdfImportCandidate {
   final String sourceId;
@@ -467,17 +470,28 @@ class DataService {
     required List<String> tagIds,
     required String idPrefix,
     bool generateHash = true,
+    DuplicateImportBehavior onDuplicate = DuplicateImportBehavior.skip,
   }) async {
     final db = await _db;
     var importedCount = 0;
+    var updatedCount = 0;
     final errors = <ImportError>[];
 
-    final existingRows = await db.query('pdf_files', columns: ['path', 'file_hash']);
-    final existingPaths = existingRows.map((row) => row['path'] as String).toSet();
-    final existingHashes = existingRows
-        .map((row) => row['file_hash'] as String?)
-        .whereType<String>()
-        .toSet();
+    final existingRows = await db.query('pdf_files', columns: ['id', 'path', 'file_hash']);
+    final pdfIdByPath = <String, String>{
+      for (final row in existingRows) row['path'] as String: row['id'] as String,
+    };
+    final pdfIdByHash = <String, String>{
+      for (final row in existingRows)
+        if (row['file_hash'] != null) row['file_hash'] as String: row['id'] as String,
+    };
+    final tagRows = await db.query('pdf_file_tags', columns: ['pdf_id', 'tag_id']);
+    final currentTagIdsByPdf = <String, Set<String>>{};
+    for (final row in tagRows) {
+      final pdfId = row['pdf_id'] as String;
+      final tagId = row['tag_id'] as String;
+      currentTagIdsByPdf.putIfAbsent(pdfId, () => <String>{}).add(tagId);
+    }
 
     for (var i = 0; i < candidates.length; i++) {
       final candidate = candidates[i];
@@ -495,8 +509,19 @@ class DataService {
         continue;
       }
 
-      if (existingPaths.contains(source)) {
-        errors.add(ImportError(code: 'DUPLICATE_PATH', source: source, cause: 'Arquivo já importado (mesmo caminho).'));
+      final duplicateByPathId = pdfIdByPath[source];
+      if (duplicateByPathId != null) {
+        if (onDuplicate == DuplicateImportBehavior.mergeTags) {
+          final existingTags = currentTagIdsByPdf.putIfAbsent(duplicateByPathId, () => <String>{});
+          final mergedTags = {...existingTags, ...tagIds};
+          if (mergedTags.length > existingTags.length) {
+            await updatePdfTags(duplicateByPathId, mergedTags.toList());
+            currentTagIdsByPdf[duplicateByPathId] = mergedTags;
+            updatedCount++;
+          }
+        } else {
+          errors.add(ImportError(code: 'DUPLICATE_PATH', source: source, cause: 'Arquivo já importado (mesmo caminho).'));
+        }
         continue;
       }
 
@@ -515,16 +540,28 @@ class DataService {
         }
       }
 
-      if (hash != null && existingHashes.contains(hash)) {
-        errors.add(ImportError(code: 'DUPLICATE_HASH', source: source, cause: 'Arquivo duplicado detectado por hash.'));
+      final duplicateByHashId = hash == null ? null : pdfIdByHash[hash];
+      if (duplicateByHashId != null) {
+        if (onDuplicate == DuplicateImportBehavior.mergeTags) {
+          final existingTags = currentTagIdsByPdf.putIfAbsent(duplicateByHashId, () => <String>{});
+          final mergedTags = {...existingTags, ...tagIds};
+          if (mergedTags.length > existingTags.length) {
+            await updatePdfTags(duplicateByHashId, mergedTags.toList());
+            currentTagIdsByPdf[duplicateByHashId] = mergedTags;
+            updatedCount++;
+          }
+        } else {
+          errors.add(ImportError(code: 'DUPLICATE_HASH', source: source, cause: 'Arquivo duplicado detectado por hash.'));
+        }
         continue;
       }
 
       final title = candidate.displayName.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), '');
 
+      final pdfId = '$idPrefix-$i-${DateTime.now().microsecondsSinceEpoch}';
       await addPdf(
         PdfFile(
-          id: '$idPrefix-$i-${DateTime.now().microsecondsSinceEpoch}',
+          id: pdfId,
           path: source,
           title: title,
           uri: candidate.uri,
@@ -549,14 +586,15 @@ class DataService {
         }
       }
 
-      existingPaths.add(source);
+      pdfIdByPath[source] = pdfId;
+      currentTagIdsByPdf[pdfId] = tagIds.toSet();
       if (hash != null) {
-        existingHashes.add(hash);
+        pdfIdByHash[hash] = pdfId;
       }
       importedCount++;
     }
 
-    return ImportResult(importedCount: importedCount, errors: errors);
+    return ImportResult(importedCount: importedCount, updatedCount: updatedCount, errors: errors);
   }
 
   Future<bool> persistUriPermission(String uri) async {

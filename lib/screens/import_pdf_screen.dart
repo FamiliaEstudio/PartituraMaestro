@@ -184,6 +184,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
       tagIds: _selectedTagIds,
       idPrefix: const Uuid().v4(),
       generateHash: _generateHash,
+      onDuplicate: DuplicateImportBehavior.mergeTags,
     );
 
     setState(() {
@@ -194,9 +195,9 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
     if (!mounted) return;
 
     widget.onImported();
-    _showMsg('${result.importedCount} arquivo(s) importado(s). ${result.errors.length} erro(s).');
+    _showMsg('${result.importedCount} importado(s), ${result.updatedCount} atualizado(s), ${result.errors.length} erro(s).');
 
-    if (result.importedCount > 0) {
+    if (result.importedCount > 0 || result.updatedCount > 0) {
       Navigator.pop(context);
     }
   }

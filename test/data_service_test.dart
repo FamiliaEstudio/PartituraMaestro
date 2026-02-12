@@ -132,6 +132,7 @@ void main() {
     );
 
     expect(initial.importedCount, 1);
+    expect(initial.updatedCount, 0);
     expect(initial.errors, isEmpty);
 
     final duplicateResult = await service.importPdfCandidates(
@@ -144,6 +145,7 @@ void main() {
     );
 
     expect(duplicateResult.importedCount, 0);
+    expect(duplicateResult.updatedCount, 0);
     expect(
       duplicateResult.errors.map((e) => e.reason),
       containsAll([
@@ -151,6 +153,46 @@ void main() {
         '[DUPLICATE_HASH] Arquivo duplicado detectado por hash.',
       ]),
     );
+
+    await tempDir.delete(recursive: true);
+  });
+
+
+  test('mergeTags atualiza tags em PDF já importado por caminho', () async {
+    final tempDir = await Directory.systemTemp.createTemp('pdf-upsert-tags');
+    final originalPath = p.join(tempDir.path, 'original.pdf');
+    final pdfBytes = '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
+
+    await File(originalPath).writeAsBytes(pdfBytes);
+    await service.addTag(Tag(id: 'tag-a', name: 'Tag A'));
+    await service.addTag(Tag(id: 'tag-b', name: 'Tag B'));
+
+    final initial = await service.importPdfCandidates(
+      candidates: [
+        PdfImportCandidate(sourceId: originalPath, displayName: 'original.pdf'),
+      ],
+      tagIds: const ['tag-a'],
+      idPrefix: 'upsert-check',
+    );
+
+    final merged = await service.importPdfCandidates(
+      candidates: [
+        PdfImportCandidate(sourceId: originalPath, displayName: 'original.pdf'),
+      ],
+      tagIds: const ['tag-b'],
+      idPrefix: 'upsert-check',
+      onDuplicate: DuplicateImportBehavior.mergeTags,
+    );
+
+    expect(initial.importedCount, 1);
+    expect(initial.updatedCount, 0);
+    expect(merged.importedCount, 0);
+    expect(merged.updatedCount, 1);
+    expect(merged.errors, isEmpty);
+
+    final pdfs = await service.getPdfs();
+    expect(pdfs, hasLength(1));
+    expect(pdfs.single.tagIds.toSet(), {'tag-a', 'tag-b'});
 
     await tempDir.delete(recursive: true);
   });
@@ -231,6 +273,7 @@ void main() {
     );
 
     expect(result.importedCount, 1);
+    expect(result.updatedCount, 0);
 
     final imported = (await service.getPdfs()).single;
     expect(imported.uri, uri);
@@ -347,6 +390,7 @@ void main() {
     );
 
     expect(result.importedCount, 1);
+    expect(result.updatedCount, 0);
     expect(result.errors, isEmpty);
     final imported = (await serviceWithUriRead.getPdfs()).single;
     expect(imported.path, 'saf://content://tree/root/documento');
