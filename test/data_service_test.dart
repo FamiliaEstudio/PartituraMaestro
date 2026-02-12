@@ -157,7 +157,6 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-
   test('mergeTags atualiza tags em PDF já importado por caminho', () async {
     final tempDir = await Directory.systemTemp.createTemp('pdf-upsert-tags');
     final originalPath = p.join(tempDir.path, 'original.pdf');
