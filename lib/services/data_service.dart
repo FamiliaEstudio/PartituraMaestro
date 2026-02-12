@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -333,25 +334,47 @@ class DataService {
         'id': template.id,
         'name': template.name,
       });
-
-      for (var i = 0; i < template.slots.length; i++) {
-        final slot = template.slots[i];
-        await txn.insert('sub_structure_slots', {
-          'id': slot.id,
-          'template_id': template.id,
-          'name': slot.name,
-          'position': i,
-        });
-
-        for (final tagId in slot.requiredTagIds.toSet()) {
-          await txn.insert(
-            'sub_structure_slot_tags',
-            {'slot_id': slot.id, 'tag_id': tagId},
-            conflictAlgorithm: ConflictAlgorithm.ignore,
-          );
-        }
-      }
+      await _upsertSlotsForTemplate(txn, template);
     });
+  }
+
+  Future<void> updateTemplate(StructureTemplate template) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.update('structure_templates', {'name': template.name}, where: 'id = ?', whereArgs: [template.id]);
+      await txn.delete(
+        'sub_structure_slot_tags',
+        where: 'slot_id IN (SELECT id FROM sub_structure_slots WHERE template_id = ?)',
+        whereArgs: [template.id],
+      );
+      await txn.delete('sub_structure_slots', where: 'template_id = ?', whereArgs: [template.id]);
+      await _upsertSlotsForTemplate(txn, template);
+    });
+  }
+
+  Future<void> deleteTemplate(String templateId) async {
+    final db = await _db;
+    await db.delete('structure_templates', where: 'id = ?', whereArgs: [templateId]);
+  }
+
+  Future<void> _upsertSlotsForTemplate(Transaction txn, StructureTemplate template) async {
+    for (var i = 0; i < template.slots.length; i++) {
+      final slot = template.slots[i];
+      await txn.insert('sub_structure_slots', {
+        'id': slot.id,
+        'template_id': template.id,
+        'name': slot.name,
+        'position': i,
+      });
+
+      for (final tagId in slot.requiredTagIds.toSet()) {
+        await txn.insert(
+          'sub_structure_slot_tags',
+          {'slot_id': slot.id, 'tag_id': tagId},
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    }
   }
 
   Future<List<StructureTemplate>> getTemplates() async {
@@ -404,7 +427,112 @@ class DataService {
       'template_id': instance.templateId,
       'name': instance.name,
       'created_at': instance.createdAt.toIso8601String(),
+      'is_completed': instance.isCompleted ? 1 : 0,
+      'template_snapshot_json': jsonEncode(instance.templateSnapshot.toMap()),
     });
+
+    for (final entry in instance.selectedPdfIds.entries) {
+      if (entry.value == null) continue;
+      await updateInstanceSelection(instance.id, entry.key, entry.value!);
+    }
+  }
+
+  Future<void> updateInstanceMeta({
+    required String instanceId,
+    String? name,
+    bool? isCompleted,
+  }) async {
+    final db = await _db;
+    final values = <String, Object?>{};
+    if (name != null) values['name'] = name;
+    if (isCompleted != null) values['is_completed'] = isCompleted ? 1 : 0;
+    if (values.isEmpty) return;
+    await db.update('structure_instances', values, where: 'id = ?', whereArgs: [instanceId]);
+  }
+
+  Future<StructureInstance?> getInstance(String instanceId) async {
+    final db = await _db;
+    final rows = await db.query('structure_instances', where: 'id = ?', whereArgs: [instanceId], limit: 1);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final selections = await getInstanceSelections(instanceId);
+    final snapshot = StructureTemplate.fromMap(jsonDecode(row['template_snapshot_json'] as String) as Map<String, dynamic>);
+    return StructureInstance(
+      id: row['id'] as String,
+      templateId: row['template_id'] as String,
+      name: row['name'] as String,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      isCompleted: (row['is_completed'] as int? ?? 0) == 1,
+      templateSnapshot: snapshot,
+      selectedPdfIds: selections,
+    );
+  }
+
+  Future<List<StructureInstance>> getInstances({DateTime? startDate, DateTime? endDate, String? templateId}) async {
+    final db = await _db;
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+
+    if (startDate != null) {
+      whereClauses.add('created_at >= ?');
+      whereArgs.add(startDate.toIso8601String());
+    }
+    if (endDate != null) {
+      whereClauses.add('created_at <= ?');
+      whereArgs.add(endDate.toIso8601String());
+    }
+    if (templateId != null && templateId.isNotEmpty) {
+      whereClauses.add('template_id = ?');
+      whereArgs.add(templateId);
+    }
+
+    final rows = await db.query(
+      'structure_instances',
+      where: whereClauses.isEmpty ? null : whereClauses.join(' AND '),
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
+      orderBy: 'created_at DESC',
+    );
+
+    final instances = <StructureInstance>[];
+    for (final row in rows) {
+      final id = row['id'] as String;
+      instances.add(
+        StructureInstance(
+          id: id,
+          templateId: row['template_id'] as String,
+          name: row['name'] as String,
+          createdAt: DateTime.parse(row['created_at'] as String),
+          isCompleted: (row['is_completed'] as int? ?? 0) == 1,
+          templateSnapshot: StructureTemplate.fromMap(
+            jsonDecode(row['template_snapshot_json'] as String) as Map<String, dynamic>,
+          ),
+          selectedPdfIds: await getInstanceSelections(id),
+        ),
+      );
+    }
+    return instances;
+  }
+
+  Future<StructureInstance> duplicateInstance(StructureInstance source) async {
+    final duplicated = StructureInstance(
+      id: 'inst-${DateTime.now().microsecondsSinceEpoch}',
+      templateId: source.templateId,
+      name: '${source.name} (cópia)',
+      createdAt: DateTime.now(),
+      templateSnapshot: source.templateSnapshot,
+      selectedPdfIds: Map<String, String?>.from(source.selectedPdfIds),
+    );
+    await addInstance(duplicated);
+    return duplicated;
+  }
+
+  Future<void> clearInstanceSelection(String instanceId, String slotId) async {
+    final db = await _db;
+    await db.delete(
+      'instance_slot_selection',
+      where: 'instance_id = ? AND slot_id = ?',
+      whereArgs: [instanceId, slotId],
+    );
   }
 
   Future<void> updateInstanceSelection(String instanceId, String slotId, String pdfId) async {

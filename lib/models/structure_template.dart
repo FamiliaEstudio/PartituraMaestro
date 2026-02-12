@@ -21,6 +21,14 @@ class SubStructureSlot {
       'requiredTagIds': requiredTagIds,
     };
   }
+
+  factory SubStructureSlot.fromMap(Map<String, dynamic> map) {
+    return SubStructureSlot(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      requiredTagIds: List<String>.from(map['requiredTagIds'] as List? ?? const []),
+    );
+  }
 }
 
 /// Define o modelo da estrutura criada pelo usuário.
@@ -42,5 +50,15 @@ class StructureTemplate {
       'name': name,
       'slots': slots.map((s) => s.toMap()).toList(),
     };
+  }
+
+  factory StructureTemplate.fromMap(Map<String, dynamic> map) {
+    return StructureTemplate(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      slots: (map['slots'] as List? ?? const [])
+          .map((slot) => SubStructureSlot.fromMap(Map<String, dynamic>.from(slot as Map)))
+          .toList(),
+    );
   }
 }
