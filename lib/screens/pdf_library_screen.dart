@@ -1,11 +1,9 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
-import 'package:uuid/uuid.dart';
 
 import '../models/pdf_file.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
+import 'import_pdf_screen.dart';
 
 class PdfLibraryScreen extends StatefulWidget {
   const PdfLibraryScreen({super.key, required this.onDataChanged});
@@ -39,28 +37,13 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
     widget.onDataChanged();
   }
 
-  Future<void> _addPdf() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-
-    if (result == null || result.files.single.path == null) return;
-
-    final filePath = result.files.single.path!;
-    final fileName = path.basenameWithoutExtension(filePath);
-    final selectedTagIds = await _openTagSelector();
-    if (selectedTagIds == null) return;
-
-    await _dataService.addPdf(
-      PdfFile(
-        id: const Uuid().v4(),
-        path: filePath,
-        title: fileName,
-        tagIds: selectedTagIds,
+  Future<void> _openImportScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImportPdfScreen(onImported: _reload),
       ),
     );
-
     await _reload();
   }
 
@@ -137,9 +120,9 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Biblioteca de PDFs')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addPdf,
+        onPressed: _openImportScreen,
         icon: const Icon(Icons.upload_file),
-        label: const Text('Adicionar PDF'),
+        label: const Text('Importar PDFs'),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _future,
@@ -164,7 +147,7 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
-                  title: Text(pdf.title),
+                  title: Text(pdf.displayName),
                   subtitle: Text(
                     '${_tagNames(pdf.tagIds, tags)}\n${pdf.path}',
                   ),

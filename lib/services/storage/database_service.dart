@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
   static const _databaseName = 'partitura_maestro.db';
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
 
   static final DatabaseService _instance = DatabaseService._internal();
 
@@ -46,7 +46,20 @@ class DatabaseService {
       CREATE TABLE pdf_files (
         id TEXT PRIMARY KEY,
         path TEXT NOT NULL,
-        title TEXT NOT NULL
+        title TEXT NOT NULL,
+        uri TEXT,
+        display_name TEXT NOT NULL,
+        file_hash TEXT
+      );
+    ''');
+
+    await db.execute('CREATE UNIQUE INDEX idx_pdf_file_hash ON pdf_files(file_hash) WHERE file_hash IS NOT NULL;');
+    await db.execute('CREATE UNIQUE INDEX idx_pdf_path ON pdf_files(path);');
+
+    await db.execute('''
+      CREATE TABLE persisted_uri_permissions (
+        uri TEXT PRIMARY KEY,
+        granted_at TEXT NOT NULL
       );
     ''');
 
@@ -112,7 +125,18 @@ class DatabaseService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Reservado para futuras migrações.
+      await db.execute('ALTER TABLE pdf_files ADD COLUMN uri TEXT;');
+      await db.execute('ALTER TABLE pdf_files ADD COLUMN display_name TEXT;');
+      await db.execute('ALTER TABLE pdf_files ADD COLUMN file_hash TEXT;');
+      await db.execute('UPDATE pdf_files SET display_name = title WHERE display_name IS NULL;');
+      await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_pdf_file_hash ON pdf_files(file_hash) WHERE file_hash IS NOT NULL;');
+      await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_pdf_path ON pdf_files(path);');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS persisted_uri_permissions (
+          uri TEXT PRIMARY KEY,
+          granted_at TEXT NOT NULL
+        );
+      ''');
     }
   }
 }
