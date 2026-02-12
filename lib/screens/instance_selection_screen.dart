@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+
+import '../models/pdf_file.dart';
 import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
-import '../models/pdf_file.dart';
 import '../services/data_service.dart';
 
 class InstanceSelectionScreen extends StatefulWidget {
+  const InstanceSelectionScreen({super.key, required this.instance});
+
   final StructureInstance instance;
 
-  InstanceSelectionScreen({required this.instance});
-
   @override
-  _InstanceSelectionScreenState createState() => _InstanceSelectionScreenState();
+  State<InstanceSelectionScreen> createState() => _InstanceSelectionScreenState();
 }
 
 class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
@@ -24,12 +25,20 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
   }
 
   void _selectPdfForSlot(String slotId, List<String> requiredTags) {
-    // Busca PDFs que correspondem às tags do slot
     final candidates = _dataService.findPdfsByTags(requiredTags);
 
     showModalBottomSheet(
       context: context,
       builder: (context) {
+        if (candidates.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Nenhum PDF corresponde às tags exigidas para esta sub-estrutura.',
+            ),
+          );
+        }
+
         return ListView.builder(
           itemCount: candidates.length,
           itemBuilder: (context, index) {
@@ -59,14 +68,30 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
           final slot = _template.slots[index];
           final selectedPdfId = widget.instance.selectedPdfIds[slot.id];
           final selectedPdf = selectedPdfId != null
-              ? _dataService.getPdfs().firstWhere((p) => p.id == selectedPdfId, orElse: () => PdfFile(id: '', title: 'Desconhecido', path: ''))
+              ? _dataService.getPdfs().firstWhere(
+                    (p) => p.id == selectedPdfId,
+                    orElse: () => PdfFile(
+                      id: '',
+                      title: 'Desconhecido',
+                      path: '',
+                    ),
+                  )
               : null;
 
+          final requiredTags = slot.requiredTagIds
+              .map((id) => _dataService.getTag(id)?.name ?? id)
+              .join(', ');
+
           return Card(
-            margin: const EdgeInsets.all(8.0),
+            margin: const EdgeInsets.all(8),
             child: ListTile(
               title: Text(slot.name),
-              subtitle: Text(selectedPdf != null ? 'Selecionado: ${selectedPdf.title}' : 'Nenhum arquivo selecionado'),
+              subtitle: Text(
+                selectedPdf != null
+                    ? 'Selecionado: ${selectedPdf.title}\nTags exigidas: $requiredTags'
+                    : 'Nenhum arquivo selecionado\nTags exigidas: $requiredTags',
+              ),
+              isThreeLine: true,
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () => _selectPdfForSlot(slot.id, slot.requiredTagIds),
             ),

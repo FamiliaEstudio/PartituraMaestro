@@ -5,8 +5,10 @@ import '../services/data_service.dart';
 import 'package:uuid/uuid.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
+  const CreateTemplateScreen({super.key});
+
   @override
-  _CreateTemplateScreenState createState() => _CreateTemplateScreenState();
+  State<CreateTemplateScreen> createState() => _CreateTemplateScreenState();
 }
 
 class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
