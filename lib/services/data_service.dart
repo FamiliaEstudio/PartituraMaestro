@@ -37,6 +37,22 @@ class PdfImportCandidate {
   });
 }
 
+class TagUsageStats {
+  final int pdfCount;
+  final int slotCount;
+
+  const TagUsageStats({required this.pdfCount, required this.slotCount});
+}
+
+class TagNameConflictException implements Exception {
+  final String message;
+
+  const TagNameConflictException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class DataService {
   static final DataService _instance = DataService._internal();
 
@@ -88,6 +104,7 @@ class DataService {
   }
 
   Future<void> addTag(Tag tag) async {
+    await _assertTagNameAvailable(tag.name);
     final db = await _db;
     await db.insert(
       'tags',
@@ -97,13 +114,43 @@ class DataService {
   }
 
   Future<void> updateTag(String tagId, String name) async {
+    await _assertTagNameAvailable(name, excludeTagId: tagId);
     final db = await _db;
     await db.update('tags', {'name': name}, where: 'id = ?', whereArgs: [tagId]);
   }
 
   Future<void> deleteTag(String tagId) async {
+    await deleteTagWithStrategy(tagId: tagId, replacementTagId: null);
+  }
+
+  Future<void> deleteTagWithStrategy({
+    required String tagId,
+    String? replacementTagId,
+  }) async {
     final db = await _db;
-    await db.delete('tags', where: 'id = ?', whereArgs: [tagId]);
+    await db.transaction((txn) async {
+      if (replacementTagId != null && replacementTagId != tagId) {
+        await txn.rawInsert(
+          '''
+          INSERT OR IGNORE INTO pdf_file_tags (pdf_id, tag_id)
+          SELECT pdf_id, ?
+          FROM pdf_file_tags
+          WHERE tag_id = ?
+          ''',
+          [replacementTagId, tagId],
+        );
+        await txn.rawInsert(
+          '''
+          INSERT OR IGNORE INTO sub_structure_slot_tags (slot_id, tag_id)
+          SELECT slot_id, ?
+          FROM sub_structure_slot_tags
+          WHERE tag_id = ?
+          ''',
+          [replacementTagId, tagId],
+        );
+      }
+      await txn.delete('tags', where: 'id = ?', whereArgs: [tagId]);
+    });
   }
 
   Future<List<Tag>> getTags() async {
@@ -117,6 +164,119 @@ class DataService {
     final rows = await db.query('tags', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
     return Tag.fromMap(rows.first);
+  }
+
+  Future<Map<String, TagUsageStats>> getTagUsageStats() async {
+    final db = await _db;
+    final pdfUsageRows = await db.rawQuery(
+      'SELECT tag_id, COUNT(DISTINCT pdf_id) AS usage_count FROM pdf_file_tags GROUP BY tag_id',
+    );
+    final slotUsageRows = await db.rawQuery(
+      'SELECT tag_id, COUNT(DISTINCT slot_id) AS usage_count FROM sub_structure_slot_tags GROUP BY tag_id',
+    );
+
+    final pdfUsage = <String, int>{
+      for (final row in pdfUsageRows)
+        row['tag_id'] as String: (row['usage_count'] as int?) ?? 0,
+    };
+    final slotUsage = <String, int>{
+      for (final row in slotUsageRows)
+        row['tag_id'] as String: (row['usage_count'] as int?) ?? 0,
+    };
+
+    final tags = await getTags();
+    return {
+      for (final tag in tags)
+        tag.id: TagUsageStats(
+          pdfCount: pdfUsage[tag.id] ?? 0,
+          slotCount: slotUsage[tag.id] ?? 0,
+        ),
+    };
+  }
+
+  Future<TagUsageStats> getTagUsage(String tagId) async {
+    final usage = await getTagUsageStats();
+    return usage[tagId] ?? const TagUsageStats(pdfCount: 0, slotCount: 0);
+  }
+
+  String normalizeTagName(
+    String value, {
+    bool caseFold = true,
+    bool removeDiacritics = true,
+  }) {
+    var normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (removeDiacritics) {
+      normalized = _stripDiacritics(normalized);
+    }
+    if (caseFold) {
+      normalized = normalized.toLowerCase();
+    }
+    return normalized;
+  }
+
+  Future<void> _assertTagNameAvailable(String name, {String? excludeTagId}) async {
+    final normalizedCandidate = normalizeTagName(name);
+    final tags = await getTags();
+    for (final existing in tags) {
+      if (excludeTagId != null && existing.id == excludeTagId) continue;
+      if (normalizeTagName(existing.name) == normalizedCandidate) {
+        throw TagNameConflictException('Já existe uma tag equivalente: "${existing.name}".');
+      }
+    }
+  }
+
+  String _stripDiacritics(String input) {
+    const diacritics = {
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'Á': 'A',
+      'À': 'A',
+      'Â': 'A',
+      'Ã': 'A',
+      'Ä': 'A',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'É': 'E',
+      'È': 'E',
+      'Ê': 'E',
+      'Ë': 'E',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'Í': 'I',
+      'Ì': 'I',
+      'Î': 'I',
+      'Ï': 'I',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'Ó': 'O',
+      'Ò': 'O',
+      'Ô': 'O',
+      'Õ': 'O',
+      'Ö': 'O',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'Ú': 'U',
+      'Ù': 'U',
+      'Û': 'U',
+      'Ü': 'U',
+      'ç': 'c',
+      'Ç': 'C',
+      'ñ': 'n',
+      'Ñ': 'N',
+    };
+    return input.split('').map((char) => diacritics[char] ?? char).join();
   }
 
   Future<void> addPdf(PdfFile pdf) async {
