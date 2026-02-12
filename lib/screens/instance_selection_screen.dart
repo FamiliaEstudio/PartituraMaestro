@@ -6,6 +6,7 @@ import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
+import 'celebration_mode_screen.dart';
 import 'pdf_viewer_screen.dart';
 
 class InstanceSelectionScreen extends StatefulWidget {
@@ -219,6 +220,19 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
           },
         ),
         actions: [
+          IconButton(
+            tooltip: 'Modo celebração',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CelebrationModeScreen(instance: widget.instance),
+                ),
+              );
+              await _refresh();
+            },
+            icon: const Icon(Icons.celebration_outlined),
+          ),
           IconButton(
             tooltip: 'Duplicar instância',
             onPressed: () async {
