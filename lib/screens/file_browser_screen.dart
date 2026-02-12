@@ -34,6 +34,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
   final List<_BreadcrumbEntry> _breadcrumbs = [];
   List<AndroidDocumentNode> _nodes = [];
   final Set<String> _selectedPdfUris = {};
+  final Map<String, AndroidDocumentNode> _knownNodesByUri = {};
+  final Map<String, String> _sourceFolderUriByPdfUri = {};
   List<String> _selectedTagIds = [];
 
   Future<void> _pickRootFolder() async {
@@ -49,6 +51,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
         ..clear()
         ..add(const _BreadcrumbEntry(uri: '', name: 'Raiz'));
       _selectedPdfUris.clear();
+      _knownNodesByUri.clear();
+      _sourceFolderUriByPdfUri.clear();
     });
 
     await _loadDirectory(parentUri: treeUri, displayName: 'Raiz', replaceTrail: true);
@@ -67,6 +71,12 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
       setState(() {
         _nodes = children;
         _loading = false;
+        for (final node in children) {
+          _knownNodesByUri[node.uri] = node;
+          if (node.isPdf) {
+            _sourceFolderUriByPdfUri[node.uri] = parentUri;
+          }
+        }
         if (replaceTrail) {
           _breadcrumbs
             ..clear()
@@ -143,7 +153,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
             sourceId: 'saf://${node.uri}',
             displayName: node.name,
             uri: node.uri,
-            sourceFolderUri: _breadcrumbs.isEmpty ? _treeUri : _breadcrumbs.last.uri,
+            sourceFolderUri:
+                _sourceFolderUriByPdfUri[node.uri] ?? (_breadcrumbs.isEmpty ? _treeUri : _breadcrumbs.last.uri),
             sourceDocumentUri: node.uri,
           ),
         )
@@ -151,7 +162,10 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
   }
 
   void _finishWithSelected() {
-    final selectedNodes = _nodes.where((n) => _selectedPdfUris.contains(n.uri));
+    final selectedNodes = _selectedPdfUris
+        .map((uri) => _knownNodesByUri[uri])
+        .whereType<AndroidDocumentNode>()
+        .where((node) => node.isPdf);
     final candidates = _buildCandidates(selectedNodes);
     if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecione pelo menos um PDF.')));
@@ -188,6 +202,11 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
       _selectedPdfUris
         ..clear()
         ..addAll(folderPdfs.map((e) => e.uri));
+      final sourceFolderUri = _breadcrumbs.isEmpty ? _treeUri ?? '' : _breadcrumbs.last.uri;
+      for (final pdf in folderPdfs) {
+        _knownNodesByUri[pdf.uri] = pdf;
+        _sourceFolderUriByPdfUri[pdf.uri] = sourceFolderUri;
+      }
     });
 
     _finishWithSelected();
@@ -273,6 +292,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                                     ? (value) {
                                         setState(() {
                                           if (value == true) {
+                                            _knownNodesByUri[node.uri] = node;
+                                            _sourceFolderUriByPdfUri[node.uri] = _breadcrumbs.isEmpty ? _treeUri ?? '' : _breadcrumbs.last.uri;
                                             _selectedPdfUris.add(node.uri);
                                           } else {
                                             _selectedPdfUris.remove(node.uri);
