@@ -104,10 +104,10 @@ void main() {
       ),
     );
 
-    await service.updateInstanceSelection('inst-1', 'slot-entrada', 'pdf-entrada');
+    await service.updateInstanceSelection('inst-1', 'slot-entrada', ['pdf-entrada']);
 
     final selections = await service.getInstanceSelections('inst-1');
-    expect(selections['slot-entrada'], 'pdf-entrada');
+    expect(selections['slot-entrada'], ['pdf-entrada']);
 
     await service.clearInstanceSelection('inst-1', 'slot-entrada');
     final cleared = await service.getInstanceSelections('inst-1');
