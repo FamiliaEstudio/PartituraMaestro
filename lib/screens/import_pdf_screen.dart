@@ -322,7 +322,7 @@ class _ImportPdfScreenState extends State<ImportPdfScreen> {
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
-                      'Android: permissões de armazenamento serão solicitadas. URIs content:// importadas são persistidas internamente para reuso.',
+                      'Android: permissões de armazenamento serão solicitadas. Quando o acesso URI não puder ser mantido, será necessário relocalizar o PDF depois.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),

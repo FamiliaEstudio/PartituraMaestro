@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,6 +15,7 @@ import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
 import '../models/tag.dart';
 import 'storage/database_service.dart';
+import 'uri_access_service.dart';
 
 class ImportError {
   final String source;
@@ -58,9 +60,12 @@ class TagNameConflictException implements Exception {
 }
 
 class DataService {
-  DataService({DatabaseService? databaseService}) : _databaseService = databaseService ?? DatabaseService();
+  DataService({DatabaseService? databaseService, UriAccessService? uriAccessService})
+      : _databaseService = databaseService ?? DatabaseService(),
+        _uriAccessService = uriAccessService ?? const UriAccessService();
 
   final DatabaseService _databaseService;
+  final UriAccessService _uriAccessService;
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -445,7 +450,15 @@ TagMapper.toDto(tag).toMap(),
       );
 
       if (candidate.uri != null && candidate.uri!.startsWith('content://')) {
-        await persistUriPermission(candidate.uri!);
+        final permissionGranted = await persistUriPermission(candidate.uri!);
+        if (!permissionGranted) {
+          errors.add(
+            ImportError(
+              source: source,
+              reason: 'Acesso URI não pôde ser persistido. Relocalize se necessário após reiniciar.',
+            ),
+          );
+        }
       }
 
       existingPaths.add(source);
@@ -458,16 +471,35 @@ TagMapper.toDto(tag).toMap(),
     return ImportResult(importedCount: importedCount, errors: errors);
   }
 
-  Future<void> persistUriPermission(String uri) async {
+  Future<bool> persistUriPermission(String uri) async {
     final db = await _db;
+    final grantedAt = DateTime.now().toIso8601String();
+
     await db.insert(
       'persisted_uri_permissions',
       {
         'uri': uri,
-        'granted_at': DateTime.now().toIso8601String(),
+        'granted_at': grantedAt,
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+
+    if (!Platform.isAndroid || !uri.startsWith('content://')) {
+      return true;
+    }
+
+    final granted = await _uriAccessService.persistReadPermission(uri);
+    if (!granted) {
+      await db.delete('persisted_uri_permissions', where: 'uri = ?', whereArgs: [uri]);
+    }
+    return granted;
+  }
+
+  Future<Uint8List?> readUriBytes(String uri) async {
+    if (!uri.startsWith('content://')) {
+      return null;
+    }
+    return _uriAccessService.readBytes(uri);
   }
 
   Future<void> addTemplate(StructureTemplate template) async {
