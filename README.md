@@ -24,6 +24,21 @@ flutter run --dart-define=APP_FLAVOR=debug
 flutter run --release --dart-define=APP_FLAVOR=release --dart-define=ENABLE_CRASHLYTICS=true
 ```
 
+## Build Android
+
+Estrutura Android foi recriada em `android/`, com:
+
+- **branding do produto** no launcher (`Partitura Maestro`)
+- **namespace/applicationId** em `com.partituramaestro.pastoral_pdf_organizer`
+- **assinatura de release** via `android/key.properties` + `signingConfigs.release`
+
+Comandos principais:
+
+```bash
+flutter build apk --release --dart-define=APP_FLAVOR=release
+flutter build appbundle --release --dart-define=APP_FLAVOR=release
+```
+
 ## Qualidade
 
 Pipeline CI em `.github/workflows/ci.yml` executa:
