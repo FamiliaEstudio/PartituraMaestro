@@ -13,9 +13,8 @@ class StructureInstance {
   // Política de integridade: instâncias antigas permanecem estáveis mesmo se o template for alterado.
   StructureTemplate templateSnapshot;
 
-  // Mapeia o ID do slot para o ID do PdfFile selecionado
-  // Pode ser null se ainda não foi selecionado
-  Map<String, String?> selectedPdfIds;
+  // Mapeia o ID do slot para a lista ordenada de IDs de PdfFile selecionados.
+  Map<String, List<String>> selectedPdfIds;
 
   StructureInstance({
     required this.id,
@@ -24,6 +23,6 @@ class StructureInstance {
     required this.createdAt,
     required this.templateSnapshot,
     this.isCompleted = false,
-    Map<String, String?>? selectedPdfIds,
+    Map<String, List<String>>? selectedPdfIds,
   }) : selectedPdfIds = selectedPdfIds ?? {};
 }

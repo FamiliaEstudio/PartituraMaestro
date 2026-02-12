@@ -45,47 +45,102 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
     setState(() => _future = _loadData());
   }
 
-  Future<void> _selectPdfForSlot(String slotId, List<String> requiredTags) async {
+  Future<void> _selectPdfsForSlot(String slotId, List<String> requiredTags, List<String> currentSelection) async {
     final candidates = await context.read<DataService>().findPdfsByTags(requiredTags);
     if (!mounted) return;
 
-    await showModalBottomSheet(
+    final selected = await showModalBottomSheet<List<String>>(
       context: context,
+      isScrollControlled: true,
       builder: (context) {
-        if (candidates.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Nenhum PDF corresponde às tags exigidas para esta sub-estrutura.'),
-          );
-        }
+        final tempSelection = <String>{...currentSelection};
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            if (candidates.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Nenhum PDF corresponde às tags exigidas para esta sub-estrutura.'),
+              );
+            }
 
-        return ListView(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.clear),
-              title: const Text('Remover seleção deste slot'),
-              onTap: () async {
-                await context.read<DataService>().clearInstanceSelection(widget.instance.id, slotId);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                await _refresh();
-              },
-            ),
-            ...candidates.map(
-              (pdf) => ListTile(
-                title: Text(pdf.title),
-                onTap: () async {
-                  await context.read<DataService>().updateInstanceSelection(widget.instance.id, slotId, pdf.id);
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  await _refresh();
-                },
+            return SafeArea(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.8,
+                child: Column(
+                  children: [
+                    const ListTile(title: Text('Selecionar PDFs para o slot')),
+                    Expanded(
+                      child: ListView(
+                        children: candidates
+                            .map(
+                              (pdf) => CheckboxListTile(
+                                value: tempSelection.contains(pdf.id),
+                                title: Text(pdf.title),
+                                onChanged: (checked) {
+                                  setModalState(() {
+                                    if (checked == true) {
+                                      tempSelection.add(pdf.id);
+                                    } else {
+                                      tempSelection.remove(pdf.id);
+                                    }
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancelar'),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, <String>[]),
+                            child: const Text('Limpar'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () {
+                              final ordered = candidates.where((pdf) => tempSelection.contains(pdf.id)).map((pdf) => pdf.id).toList();
+                              Navigator.pop(context, ordered);
+                            },
+                            child: const Text('Confirmar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
+
+    if (selected == null) return;
+
+    await context.read<DataService>().updateInstanceSelection(widget.instance.id, slotId, selected);
+    await _refresh();
+  }
+
+  Future<void> _reorderSlotSelection(String slotId, List<String> selectedIds, int from, int to) async {
+    final updated = List<String>.from(selectedIds);
+    final item = updated.removeAt(from);
+    updated.insert(to, item);
+    await context.read<DataService>().updateInstanceSelection(widget.instance.id, slotId, updated);
+    await _refresh();
+  }
+
+  Future<void> _removePdfFromSlot(String slotId, List<String> selectedIds, String pdfId) async {
+    final updated = List<String>.from(selectedIds)..remove(pdfId);
+    await context.read<DataService>().updateInstanceSelection(widget.instance.id, slotId, updated);
+    await _refresh();
   }
 
   Future<void> _renameInstance(StructureInstance instance) async {
@@ -221,7 +276,7 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
 
           final pdfs = (snapshot.data?['pdfs'] as List<PdfFile>?) ?? [];
           final tags = (snapshot.data?['tags'] as List<Tag>?) ?? [];
-          final selections = (snapshot.data?['selections'] as Map<String, String?>?) ?? {};
+          final selections = (snapshot.data?['selections'] as Map<String, List<String>>?) ?? {};
 
           return Column(
             children: [
@@ -239,13 +294,16 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
                   itemCount: template.slots.length,
                   itemBuilder: (context, index) {
                     final slot = template.slots[index];
-                    final selectedPdfId = selections[slot.id];
-                    final selectedPdf = selectedPdfId != null
-                        ? pdfs.firstWhere(
-                            (p) => p.id == selectedPdfId,
+                    final selectedPdfIds = selections[slot.id] ?? <String>[];
+                    final selectedPdfs = selectedPdfIds
+                        .map(
+                          (id) => pdfs.firstWhere(
+                            (p) => p.id == id,
                             orElse: () => PdfFile(id: '', title: 'Desconhecido', path: ''),
-                          )
-                        : null;
+                          ),
+                        )
+                        .where((pdf) => pdf.id.isNotEmpty)
+                        .toList();
 
                     final requiredTags = slot.requiredTagIds
                         .map((id) => tags.firstWhere((t) => t.id == id, orElse: () => Tag(id: id, name: id)).name)
@@ -253,21 +311,60 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
 
                     return Card(
                       margin: const EdgeInsets.all(8),
-                      child: ListTile(
-                        title: Text(slot.name),
-                        subtitle: Text(
-                          selectedPdf != null
-                              ? 'Selecionado: ${selectedPdf.title}\nTags exigidas: $requiredTags'
-                              : 'Nenhum arquivo selecionado\nTags exigidas: $requiredTags',
-                        ),
-                        isThreeLine: true,
-                        trailing: selectedPdf != null
-                            ? FilledButton.tonal(
-                                onPressed: selectedPdf.id.isEmpty ? null : () => _openSelectedPdf(selectedPdf),
-                                child: const Text('Abrir'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(slot.name),
+                              subtitle: Text('Tags exigidas: $requiredTags'),
+                              trailing: OutlinedButton(
+                                onPressed: () => _selectPdfsForSlot(slot.id, slot.requiredTagIds, selectedPdfIds),
+                                child: const Text('Selecionar PDFs'),
+                              ),
+                            ),
+                            if (selectedPdfs.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Text('Nenhum PDF selecionado.'),
                               )
-                            : const Icon(Icons.arrow_forward_ios),
-                        onTap: () => _selectPdfForSlot(slot.id, slot.requiredTagIds),
+                            else
+                              ...List.generate(selectedPdfs.length, (pdfIndex) {
+                                final pdf = selectedPdfs[pdfIndex];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text('${pdfIndex + 1}. ${pdf.title}'),
+                                  leading: IconButton(
+                                    icon: const Icon(Icons.open_in_new),
+                                    onPressed: () => _openSelectedPdf(pdf),
+                                  ),
+                                  trailing: Wrap(
+                                    spacing: 2,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.arrow_upward),
+                                        onPressed: pdfIndex == 0
+                                            ? null
+                                            : () => _reorderSlotSelection(slot.id, selectedPdfIds, pdfIndex, pdfIndex - 1),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.arrow_downward),
+                                        onPressed: pdfIndex == selectedPdfs.length - 1
+                                            ? null
+                                            : () => _reorderSlotSelection(slot.id, selectedPdfIds, pdfIndex, pdfIndex + 1),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline),
+                                        onPressed: () => _removePdfFromSlot(slot.id, selectedPdfIds, pdf.id),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                          ],
+                        ),
                       ),
                     );
                   },

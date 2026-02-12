@@ -735,8 +735,7 @@ class DataService {
     });
 
     for (final entry in instance.selectedPdfIds.entries) {
-      if (entry.value == null) continue;
-      await updateInstanceSelection(instance.id, entry.key, entry.value!);
+      await updateInstanceSelection(instance.id, entry.key, entry.value);
     }
   }
 
@@ -839,7 +838,7 @@ class DataService {
       name: '${source.name} (cópia)',
       createdAt: DateTime.now(),
       templateSnapshot: source.templateSnapshot,
-      selectedPdfIds: Map<String, String?>.from(source.selectedPdfIds),
+      selectedPdfIds: {for (final entry in source.selectedPdfIds.entries) entry.key: List<String>.from(entry.value)},
     );
     await addInstance(duplicated);
     return duplicated;
@@ -854,26 +853,43 @@ class DataService {
     );
   }
 
-  Future<void> updateInstanceSelection(String instanceId, String slotId, String pdfId) async {
+  Future<void> updateInstanceSelection(String instanceId, String slotId, List<String> pdfIds) async {
     final db = await _db;
-    await db.insert(
-      'instance_slot_selection',
-      {'instance_id': instanceId, 'slot_id': slotId, 'pdf_id': pdfId},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.transaction((txn) async {
+      await txn.delete(
+        'instance_slot_selection',
+        where: 'instance_id = ? AND slot_id = ?',
+        whereArgs: [instanceId, slotId],
+      );
+
+      for (var index = 0; index < pdfIds.length; index++) {
+        final pdfId = pdfIds[index];
+        await txn.insert('instance_slot_selection', {
+          'instance_id': instanceId,
+          'slot_id': slotId,
+          'pdf_id': pdfId,
+          'position': index,
+        });
+      }
+    });
   }
 
-  Future<Map<String, String?>> getInstanceSelections(String instanceId) async {
+  Future<Map<String, List<String>>> getInstanceSelections(String instanceId) async {
     final db = await _db;
     final rows = await db.query(
       'instance_slot_selection',
       where: 'instance_id = ?',
       whereArgs: [instanceId],
+      orderBy: 'slot_id ASC, position ASC',
     );
 
-    return {
-      for (final row in rows)
-        row['slot_id'] as String: row['pdf_id'] as String?,
-    };
+    final selections = <String, List<String>>{};
+    for (final row in rows) {
+      final slotId = row['slot_id'] as String;
+      final pdfId = row['pdf_id'] as String?;
+      if (pdfId == null || pdfId.isEmpty) continue;
+      selections.putIfAbsent(slotId, () => <String>[]).add(pdfId);
+    }
+    return selections;
   }
 }
