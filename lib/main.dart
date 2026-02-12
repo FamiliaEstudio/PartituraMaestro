@@ -118,7 +118,7 @@ class StructuresHome extends StatelessWidget {
       child: Consumer<StructuresState>(
         builder: (context, state, _) {
           if (state.isLoading && state.templates.isEmpty && state.instances.isEmpty) {
-            return const Scaffold(appBar: AppBar(title: Text('Partitura Maestro')), body: Center(child: CircularProgressIndicator()));
+            return Scaffold(appBar: AppBar(title: const Text('Partitura Maestro')), body: const Center(child: CircularProgressIndicator()));
           }
 
           Future<void> refresh() => state.load();

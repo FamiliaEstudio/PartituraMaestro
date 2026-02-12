@@ -36,7 +36,7 @@ void main() {
     final template = StructureTemplate(
       id: 'tpl-rename',
       name: 'Missa',
-      slots: const [SubStructureSlot(id: 'slot-1', name: 'Entrada')],
+      slots: [SubStructureSlot(id: 'slot-1', name: 'Entrada')],
     );
     await service.addTemplate(template);
     await service.addInstance(
@@ -75,7 +75,7 @@ void main() {
     final template = StructureTemplate(
       id: 'tpl-delete',
       name: 'Celebração',
-      slots: const [SubStructureSlot(id: 'slot-1', name: 'Glória')],
+      slots: [SubStructureSlot(id: 'slot-1', name: 'Glória')],
     );
     await service.addTemplate(template);
     await service.addInstance(

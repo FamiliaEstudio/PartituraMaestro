@@ -78,7 +78,7 @@ void main() {
       StructureTemplate(
         id: 'tpl-existing',
         name: 'Missa Solene',
-        slots: const [SubStructureSlot(id: 'slot-existing', name: 'Entrada')],
+        slots: [SubStructureSlot(id: 'slot-existing', name: 'Entrada')],
       ),
     );
 
