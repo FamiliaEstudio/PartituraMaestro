@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
@@ -21,48 +22,57 @@ class PdfViewerScreen extends StatefulWidget {
 }
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
-    late PdfFile _pdf;
-  late Future<String> _preparedPathFuture;
+  late PdfFile _pdf;
+  late Future<_PreparedPdfSource> _preparedSourceFuture;
 
   @override
   void initState() {
     super.initState();
     _pdf = widget.pdfFile;
-    _preparedPathFuture = _preparePdfPath();
+    _preparedSourceFuture = _preparePdfSource();
   }
 
-  Future<String> _preparePdfPath() async {
+  Future<_PreparedPdfSource> _preparePdfSource() async {
     final source = File(_pdf.path);
-    if (!await source.exists()) {
-      throw const _PdfSourceMissingException();
-    }
-
-    final appDir = await getApplicationSupportDirectory();
-    final cacheDir = Directory(p.join(appDir.path, 'pdf_cache'));
-    if (!await cacheDir.exists()) {
-      await cacheDir.create(recursive: true);
-    }
-
-    final fileLength = await source.length();
-    const largeFileThreshold = 15 * 1024 * 1024;
-    if (fileLength < largeFileThreshold) {
-      return source.path;
-    }
-
-    final pathHash = md5.convert(_pdf.path.codeUnits).toString();
-    final extension = p.extension(_pdf.path).isEmpty ? '.pdf' : p.extension(_pdf.path);
-    final cachedFile = File(p.join(cacheDir.path, '$pathHash$extension'));
-
-    if (await cachedFile.exists()) {
-      final sourceModified = await source.lastModified();
-      final cacheModified = await cachedFile.lastModified();
-      if (!sourceModified.isAfter(cacheModified) && await cachedFile.length() == fileLength) {
-        return cachedFile.path;
+    if (await source.exists()) {
+      final appDir = await getApplicationSupportDirectory();
+      final cacheDir = Directory(p.join(appDir.path, 'pdf_cache'));
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
       }
+
+      final fileLength = await source.length();
+      const largeFileThreshold = 15 * 1024 * 1024;
+      if (fileLength < largeFileThreshold) {
+        return _PreparedPdfSource.path(source.path);
+      }
+
+      final pathHash = md5.convert(_pdf.path.codeUnits).toString();
+      final extension = p.extension(_pdf.path).isEmpty ? '.pdf' : p.extension(_pdf.path);
+      final cachedFile = File(p.join(cacheDir.path, '$pathHash$extension'));
+
+      if (await cachedFile.exists()) {
+        final sourceModified = await source.lastModified();
+        final cacheModified = await cachedFile.lastModified();
+        if (!sourceModified.isAfter(cacheModified) && await cachedFile.length() == fileLength) {
+          return _PreparedPdfSource.path(cachedFile.path);
+        }
+      }
+
+      await source.copy(cachedFile.path);
+      return _PreparedPdfSource.path(cachedFile.path);
     }
 
-    await source.copy(cachedFile.path);
-    return cachedFile.path;
+    final uri = _pdf.uri;
+    if (uri != null && uri.startsWith('content://')) {
+      final bytes = await context.read<DataService>().readUriBytes(uri);
+      if (bytes != null && bytes.isNotEmpty) {
+        return _PreparedPdfSource.bytes(bytes);
+      }
+      throw const _PdfUriAccessException();
+    }
+
+    throw const _PdfSourceMissingException();
   }
 
   Future<void> _relocalizeFile() async {
@@ -102,7 +112,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         fileHash: _pdf.fileHash,
         tagIds: _pdf.tagIds,
       );
-      _preparedPathFuture = _preparePdfPath();
+      _preparedSourceFuture = _preparePdfSource();
     });
   }
 
@@ -112,8 +122,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       appBar: AppBar(
         title: Text(_pdf.displayName),
       ),
-      body: FutureBuilder<String>(
-        future: _preparedPathFuture,
+      body: FutureBuilder<_PreparedPdfSource>(
+        future: _preparedSourceFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(
@@ -123,6 +133,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
           if (snapshot.hasError) {
             final missing = snapshot.error is _PdfSourceMissingException;
+            final uriMissing = snapshot.error is _PdfUriAccessException;
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -137,12 +148,14 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   Text(
                     missing
                         ? 'Arquivo ausente ou movido. Relocalize para continuar.'
-                        : 'Falha ao abrir o arquivo PDF.',
+                        : uriMissing
+                            ? 'Não foi possível acessar a URI do documento. Relocalize para continuar.'
+                            : 'Falha ao abrir o arquivo PDF.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 16),
-                  if (missing)
+                  if (missing || uriMissing)
                     FilledButton.icon(
                       onPressed: _relocalizeFile,
                       icon: const Icon(Icons.find_in_page_outlined),
@@ -153,9 +166,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             );
           }
 
-          final resolvedPath = snapshot.data!;
-          return SfPdfViewer.file(
-            File(resolvedPath),
+          final prepared = snapshot.data!;
+          if (prepared.path != null) {
+            return SfPdfViewer.file(
+              File(prepared.path!),
+              canShowPaginationDialog: true,
+              pageLayoutMode: PdfPageLayoutMode.continuous,
+            );
+          }
+
+          return SfPdfViewer.memory(
+            prepared.bytes!,
             canShowPaginationDialog: true,
             pageLayoutMode: PdfPageLayoutMode.continuous,
           );
@@ -167,4 +188,23 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
 class _PdfSourceMissingException implements Exception {
   const _PdfSourceMissingException();
+}
+
+class _PdfUriAccessException implements Exception {
+  const _PdfUriAccessException();
+}
+
+class _PreparedPdfSource {
+  const _PreparedPdfSource._({this.path, this.bytes});
+
+  final String? path;
+  final Uint8List? bytes;
+
+  factory _PreparedPdfSource.path(String path) {
+    return _PreparedPdfSource._(path: path);
+  }
+
+  factory _PreparedPdfSource.bytes(Uint8List bytes) {
+    return _PreparedPdfSource._(bytes: bytes);
+  }
 }
