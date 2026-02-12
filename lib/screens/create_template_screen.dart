@@ -6,7 +6,9 @@ import '../models/tag.dart';
 import '../services/data_service.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
-  const CreateTemplateScreen({super.key});
+  const CreateTemplateScreen({super.key, this.template});
+
+  final StructureTemplate? template;
 
   @override
   State<CreateTemplateScreen> createState() => _CreateTemplateScreenState();
@@ -19,9 +21,18 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   final List<SubStructureSlot> _slots = [];
   List<Tag> _allTags = [];
 
+  bool get _isEditing => widget.template != null;
+
   @override
   void initState() {
     super.initState();
+    _nameController.text = widget.template?.name ?? '';
+    if (_isEditing) {
+      _slots.addAll(
+        widget.template!.slots
+            .map((slot) => SubStructureSlot(id: slot.id, name: slot.name, requiredTagIds: List<String>.from(slot.requiredTagIds))),
+      );
+    }
     _loadTags();
   }
 
@@ -33,17 +44,17 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
   }
 
-  void _addSlot() {
-    final slotNameController = TextEditingController();
-    final selectedTagIds = <String>[];
+  Future<void> _openSlotDialog({SubStructureSlot? existing, int? editIndex}) async {
+    final slotNameController = TextEditingController(text: existing?.name ?? '');
+    final selectedTagIds = List<String>.from(existing?.requiredTagIds ?? const []);
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Nova Sub-estrutura'),
+              title: Text(existing == null ? 'Nova Sub-estrutura' : 'Editar Sub-estrutura'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -53,10 +64,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                       decoration: const InputDecoration(labelText: 'Nome (ex: Entrada)'),
                     ),
                     const SizedBox(height: 16),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Tags exigidas:'),
-                    ),
+                    const Align(alignment: Alignment.centerLeft, child: Text('Tags exigidas:')),
                     ..._allTags.map(
                       (tag) => CheckboxListTile(
                         value: selectedTagIds.contains(tag.id),
@@ -76,26 +84,37 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
                 ElevatedButton(
                   onPressed: () {
-                    if (slotNameController.text.trim().isNotEmpty) {
-                      setState(() {
-                        _slots.add(
-                          SubStructureSlot(
-                            id: const Uuid().v4(),
-                            name: slotNameController.text.trim(),
-                            requiredTagIds: List.from(selectedTagIds),
-                          ),
-                        );
-                      });
-                      Navigator.pop(context);
+                    final slotName = slotNameController.text.trim();
+                    if (slotName.isEmpty) return;
+                    final duplicate = _slots.any((slot) {
+                      if (editIndex != null && _slots[editIndex].id == slot.id) return false;
+                      return slot.name.toLowerCase() == slotName.toLowerCase();
+                    });
+                    if (duplicate) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(content: Text('Não é permitido nome de sub-estrutura duplicado no mesmo template.')),
+                      );
+                      return;
                     }
+
+                    setState(() {
+                      final newSlot = SubStructureSlot(
+                        id: existing?.id ?? const Uuid().v4(),
+                        name: slotName,
+                        requiredTagIds: List<String>.from(selectedTagIds),
+                      );
+                      if (editIndex != null) {
+                        _slots[editIndex] = newSlot;
+                      } else {
+                        _slots.add(newSlot);
+                      }
+                    });
+                    Navigator.pop(context);
                   },
-                  child: const Text('Adicionar'),
+                  child: Text(existing == null ? 'Adicionar' : 'Salvar'),
                 ),
               ],
             );
@@ -106,22 +125,32 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   }
 
   Future<void> _saveTemplate() async {
-    if (_formKey.currentState!.validate()) {
-      final template = StructureTemplate(
-        id: const Uuid().v4(),
-        name: _nameController.text,
-        slots: _slots,
-      );
-      await _dataService.addTemplate(template);
-      if (!mounted) return;
-      Navigator.pop(context);
+    if (!_formKey.currentState!.validate()) return;
+    if (_slots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Adicione ao menos uma sub-estrutura.')));
+      return;
     }
+
+    final template = StructureTemplate(
+      id: widget.template?.id ?? const Uuid().v4(),
+      name: _nameController.text.trim(),
+      slots: List<SubStructureSlot>.from(_slots),
+    );
+
+    if (_isEditing) {
+      await _dataService.updateTemplate(template);
+    } else {
+      await _dataService.addTemplate(template);
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Criar Nova Estrutura')),
+      appBar: AppBar(title: Text(_isEditing ? 'Editar Estrutura' : 'Criar Nova Estrutura')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -131,45 +160,58 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Nome da Estrutura (ex: Missa)'),
-                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
+                validator: (value) => value == null || value.trim().isEmpty ? 'Campo obrigatório' : null,
               ),
               const SizedBox(height: 20),
               const Text('Sub-estruturas (Partes):', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               Expanded(
-                child: ListView.builder(
+                child: ReorderableListView.builder(
                   itemCount: _slots.length,
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      if (newIndex > oldIndex) newIndex -= 1;
+                      final item = _slots.removeAt(oldIndex);
+                      _slots.insert(newIndex, item);
+                    });
+                  },
                   itemBuilder: (context, index) {
                     final slot = _slots[index];
                     final tagNames = slot.requiredTagIds
-                        .map(
-                          (id) => _allTags.firstWhere((tag) => tag.id == id, orElse: () => Tag(id: id, name: id)).name,
-                        )
+                        .map((id) => _allTags.firstWhere((tag) => tag.id == id, orElse: () => Tag(id: id, name: id)).name)
                         .join(', ');
 
                     return ListTile(
+                      key: ValueKey(slot.id),
                       title: Text(slot.name),
                       subtitle: Text('Tags: $tagNames'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          setState(() {
-                            _slots.removeAt(index);
-                          });
-                        },
+                      leading: const Icon(Icons.drag_handle),
+                      trailing: Wrap(
+                        spacing: 4,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _openSlotDialog(existing: slot, editIndex: index),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              setState(() {
+                                _slots.removeAt(index);
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     );
                   },
                 ),
               ),
-              ElevatedButton(
-                onPressed: _addSlot,
-                child: const Text('Adicionar Sub-estrutura'),
-              ),
+              ElevatedButton(onPressed: () => _openSlotDialog(), child: const Text('Adicionar Sub-estrutura')),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _saveTemplate,
                 style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                child: const Text('Salvar Estrutura'),
+                child: Text(_isEditing ? 'Salvar Alterações' : 'Salvar Estrutura'),
               ),
             ],
           ),

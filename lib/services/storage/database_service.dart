@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
   static const _databaseName = 'partitura_maestro.db';
-  static const _databaseVersion = 2;
+  static const _databaseVersion = 3;
 
   static final DatabaseService _instance = DatabaseService._internal();
 
@@ -106,7 +108,8 @@ class DatabaseService {
         template_id TEXT NOT NULL,
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        FOREIGN KEY (template_id) REFERENCES structure_templates(id) ON DELETE CASCADE
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        template_snapshot_json TEXT NOT NULL
       );
     ''');
 
@@ -117,7 +120,6 @@ class DatabaseService {
         pdf_id TEXT,
         PRIMARY KEY (instance_id, slot_id),
         FOREIGN KEY (instance_id) REFERENCES structure_instances(id) ON DELETE CASCADE,
-        FOREIGN KEY (slot_id) REFERENCES sub_structure_slots(id) ON DELETE CASCADE,
         FOREIGN KEY (pdf_id) REFERENCES pdf_files(id) ON DELETE SET NULL
       );
     ''');
@@ -137,6 +139,85 @@ class DatabaseService {
           granted_at TEXT NOT NULL
         );
       ''');
+    }
+
+    if (oldVersion < 3) {
+      await db.transaction((txn) async {
+        await txn.execute('ALTER TABLE structure_instances RENAME TO structure_instances_old;');
+        await txn.execute('''
+          CREATE TABLE structure_instances (
+            id TEXT PRIMARY KEY,
+            template_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            is_completed INTEGER NOT NULL DEFAULT 0,
+            template_snapshot_json TEXT NOT NULL
+          );
+        ''');
+
+        final templates = await txn.query('structure_templates');
+        final slots = await txn.query('sub_structure_slots', orderBy: 'position ASC');
+        final slotTags = await txn.query('sub_structure_slot_tags');
+
+        final slotTagMap = <String, List<String>>{};
+        for (final row in slotTags) {
+          final slotId = row['slot_id'] as String;
+          final tagId = row['tag_id'] as String;
+          slotTagMap.putIfAbsent(slotId, () => []).add(tagId);
+        }
+
+        final slotsByTemplate = <String, List<Map<String, dynamic>>>{};
+        for (final row in slots) {
+          final templateId = row['template_id'] as String;
+          slotsByTemplate.putIfAbsent(templateId, () => []).add({
+            'id': row['id'] as String,
+            'name': row['name'] as String,
+            'requiredTagIds': slotTagMap[row['id'] as String] ?? <String>[],
+          });
+        }
+
+        final snapshotByTemplate = <String, String>{};
+        for (final row in templates) {
+          final id = row['id'] as String;
+          final name = row['name'] as String;
+          final slotsForTemplate = slotsByTemplate[id] ?? <Map<String, dynamic>>[];
+          snapshotByTemplate[id] = jsonEncode({'id': id, 'name': name, 'slots': slotsForTemplate});
+        }
+
+        final oldInstances = await txn.query('structure_instances_old');
+        for (final row in oldInstances) {
+          final templateId = row['template_id'] as String;
+          final snapshot = snapshotByTemplate[templateId] ?? jsonEncode({'id': templateId, 'name': 'Template removido', 'slots': []});
+          await txn.insert('structure_instances', {
+            'id': row['id'],
+            'template_id': templateId,
+            'name': row['name'],
+            'created_at': row['created_at'],
+            'is_completed': 0,
+            'template_snapshot_json': snapshot,
+          });
+        }
+
+        await txn.execute('DROP TABLE structure_instances_old;');
+
+        await txn.execute('ALTER TABLE instance_slot_selection RENAME TO instance_slot_selection_old;');
+        await txn.execute('''
+          CREATE TABLE instance_slot_selection (
+            instance_id TEXT NOT NULL,
+            slot_id TEXT NOT NULL,
+            pdf_id TEXT,
+            PRIMARY KEY (instance_id, slot_id),
+            FOREIGN KEY (instance_id) REFERENCES structure_instances(id) ON DELETE CASCADE,
+            FOREIGN KEY (pdf_id) REFERENCES pdf_files(id) ON DELETE SET NULL
+          );
+        ''');
+        await txn.execute('''
+          INSERT INTO instance_slot_selection (instance_id, slot_id, pdf_id)
+          SELECT instance_id, slot_id, pdf_id
+          FROM instance_slot_selection_old;
+        ''');
+        await txn.execute('DROP TABLE instance_slot_selection_old;');
+      });
     }
   }
 }
