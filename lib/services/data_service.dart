@@ -154,6 +154,19 @@ class DataService {
     });
   }
 
+  Future<void> updatePdfLocation(String pdfId, String newPath, {String? uri}) async {
+    final db = await _db;
+    await db.update(
+      'pdf_files',
+      {
+        'path': newPath,
+        'uri': uri,
+      },
+      where: 'id = ?',
+      whereArgs: [pdfId],
+    );
+  }
+
   Future<List<PdfFile>> getPdfs() async {
     final db = await _db;
     final pdfRows = await db.query('pdf_files', orderBy: 'display_name COLLATE NOCASE ASC');

@@ -5,6 +5,7 @@ import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
+import 'pdf_viewer_screen.dart';
 
 class InstanceSelectionScreen extends StatefulWidget {
   const InstanceSelectionScreen({super.key, required this.instance});
@@ -80,6 +81,14 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
     );
   }
 
+  Future<void> _openSelectedPdf(PdfFile pdf) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PdfViewerScreen(pdfFile: pdf)),
+    );
+    await _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,7 +139,12 @@ class _InstanceSelectionScreenState extends State<InstanceSelectionScreen> {
                         : 'Nenhum arquivo selecionado\nTags exigidas: $requiredTags',
                   ),
                   isThreeLine: true,
-                  trailing: const Icon(Icons.arrow_forward_ios),
+                  trailing: selectedPdf != null
+                      ? FilledButton.tonal(
+                          onPressed: selectedPdf.id.isEmpty ? null : () => _openSelectedPdf(selectedPdf),
+                          child: const Text('Abrir'),
+                        )
+                      : const Icon(Icons.arrow_forward_ios),
                   onTap: () => _selectPdfForSlot(slot.id, slot.requiredTagIds),
                 ),
               );

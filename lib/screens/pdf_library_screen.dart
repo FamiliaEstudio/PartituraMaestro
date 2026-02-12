@@ -4,6 +4,7 @@ import '../models/pdf_file.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
 import 'import_pdf_screen.dart';
+import 'pdf_viewer_screen.dart';
 
 class PdfLibraryScreen extends StatefulWidget {
   const PdfLibraryScreen({super.key, required this.onDataChanged});
@@ -43,6 +44,14 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
       MaterialPageRoute(
         builder: (_) => ImportPdfScreen(onImported: _reload),
       ),
+    );
+    await _reload();
+  }
+
+  Future<void> _openPdf(PdfFile pdf) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PdfViewerScreen(pdfFile: pdf)),
     );
     await _reload();
   }
@@ -152,9 +161,18 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
                     '${_tagNames(pdf.tagIds, tags)}\n${pdf.path}',
                   ),
                   isThreeLine: true,
-                  trailing: IconButton(
-                    onPressed: () => _editPdfTags(pdf),
-                    icon: const Icon(Icons.edit),
+                  trailing: Wrap(
+                    spacing: 8,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: () => _openPdf(pdf),
+                        child: const Text('Abrir'),
+                      ),
+                      IconButton(
+                        onPressed: () => _editPdfTags(pdf),
+                        icon: const Icon(Icons.edit),
+                      ),
+                    ],
                   ),
                 ),
               );
