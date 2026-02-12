@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/pdf_file.dart';
+import '../domain/usecases/assign_pdf_tags.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
 import 'import_pdf_screen.dart';
@@ -16,8 +18,7 @@ class PdfLibraryScreen extends StatefulWidget {
 }
 
 class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
-  final DataService _dataService = DataService();
-  late Future<Map<String, dynamic>> _future;
+    late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
@@ -26,8 +27,8 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
   }
 
   Future<Map<String, dynamic>> _loadData() async {
-    final pdfs = await _dataService.getPdfs();
-    final tags = await _dataService.getTags();
+    final pdfs = await context.read<DataService>().getPdfs();
+    final tags = await context.read<DataService>().getTags();
     return {'pdfs': pdfs, 'tags': tags};
   }
 
@@ -57,7 +58,7 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
   }
 
   Future<List<String>?> _openTagSelector({List<String>? initialTagIds}) async {
-    final allTags = await _dataService.getTags();
+    final allTags = await context.read<DataService>().getTags();
     final selected = [...?initialTagIds];
 
     if (!mounted) return null;
@@ -112,7 +113,7 @@ class _PdfLibraryScreenState extends State<PdfLibraryScreen> {
     final updated = await _openTagSelector(initialTagIds: pdf.tagIds);
     if (updated == null) return;
 
-    await _dataService.updatePdfTags(pdf.id, updated);
+    await context.read<AssignPdfTags>()(pdfId: pdf.id, tagIds: updated);
     await _reload();
   }
 

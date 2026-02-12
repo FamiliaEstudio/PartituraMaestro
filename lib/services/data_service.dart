@@ -5,6 +5,10 @@ import 'package:crypto/crypto.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../data/dtos/pdf_file_dto.dart';
+import '../data/dtos/tag_dto.dart';
+import '../data/mappers/pdf_file_mapper.dart';
+import '../data/mappers/tag_mapper.dart';
 import '../models/pdf_file.dart';
 import '../models/structure_instance.dart';
 import '../models/structure_template.dart';
@@ -54,13 +58,9 @@ class TagNameConflictException implements Exception {
 }
 
 class DataService {
-  static final DataService _instance = DataService._internal();
+  DataService({DatabaseService? databaseService}) : _databaseService = databaseService ?? DatabaseService();
 
-  factory DataService() => _instance;
-
-  DataService._internal();
-
-  final DatabaseService _databaseService = DatabaseService();
+  final DatabaseService _databaseService;
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -108,7 +108,7 @@ class DataService {
     final db = await _db;
     await db.insert(
       'tags',
-      tag.toMap(),
+TagMapper.toDto(tag).toMap(),
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
@@ -156,7 +156,7 @@ class DataService {
   Future<List<Tag>> getTags() async {
     final db = await _db;
     final rows = await db.query('tags', orderBy: 'name COLLATE NOCASE ASC');
-    return rows.map(Tag.fromMap).toList();
+    return rows.map((row) => TagMapper.toDomain(TagDto.fromMap(row))).toList();
   }
 
   Future<Tag?> getTag(String id) async {
@@ -282,14 +282,7 @@ class DataService {
   Future<void> addPdf(PdfFile pdf) async {
     final db = await _db;
     await db.transaction((txn) async {
-      await txn.insert('pdf_files', {
-        'id': pdf.id,
-        'path': pdf.path,
-        'title': pdf.title,
-        'uri': pdf.uri,
-        'display_name': pdf.displayName,
-        'file_hash': pdf.fileHash,
-      });
+      await txn.insert('pdf_files', PdfFileMapper.toDto(pdf).toMap());
 
       for (final tagId in pdf.tagIds.toSet()) {
         await txn.insert(
@@ -341,17 +334,7 @@ class DataService {
     }
 
     return pdfRows
-        .map(
-          (row) => PdfFile(
-            id: row['id'] as String,
-            path: row['path'] as String,
-            title: row['title'] as String,
-            uri: row['uri'] as String?,
-            displayName: (row['display_name'] as String?) ?? (row['title'] as String),
-            fileHash: row['file_hash'] as String?,
-            tagIds: tagsByPdf[row['id'] as String] ?? [],
-          ),
-        )
+        .map((row) => PdfFileMapper.toDomain(PdfFileDto.fromMap(row, tagIds: tagsByPdf[row['id'] as String] ?? [])))
         .toList();
   }
 

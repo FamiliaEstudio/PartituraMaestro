@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -20,8 +21,7 @@ class PdfViewerScreen extends StatefulWidget {
 }
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
-  final DataService _dataService = DataService();
-  late PdfFile _pdf;
+    late PdfFile _pdf;
   late Future<String> _preparedPathFuture;
 
   @override
@@ -86,7 +86,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       return;
     }
 
-    await _dataService.updatePdfLocation(
+    await context.read<DataService>().updatePdfLocation(
       _pdf.id,
       selectedPath,
       uri: null,
