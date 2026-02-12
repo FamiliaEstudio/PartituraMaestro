@@ -13,9 +13,14 @@ import '../models/pdf_file.dart';
 import '../services/data_service.dart';
 
 class PdfViewerScreen extends StatefulWidget {
-  const PdfViewerScreen({super.key, required this.pdfFile});
+  const PdfViewerScreen({
+    super.key,
+    required this.pdfFile,
+    this.prefetchedPdfFile,
+  });
 
   final PdfFile pdfFile;
+  final PdfFile? prefetchedPdfFile;
 
   @override
   State<PdfViewerScreen> createState() => _PdfViewerScreenState();
@@ -29,50 +34,28 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   void initState() {
     super.initState();
     _pdf = widget.pdfFile;
-    _preparedSourceFuture = _preparePdfSource();
+    _preparedSourceFuture = _preparePdfSource(_pdf);
+
+    final nextPdf = widget.prefetchedPdfFile;
+    if (nextPdf != null) {
+      _warmUpPdfSource(nextPdf);
+    }
   }
 
-  Future<_PreparedPdfSource> _preparePdfSource() async {
-    final source = File(_pdf.path);
-    if (await source.exists()) {
-      final appDir = await getApplicationSupportDirectory();
-      final cacheDir = Directory(p.join(appDir.path, 'pdf_cache'));
-      if (!await cacheDir.exists()) {
-        await cacheDir.create(recursive: true);
-      }
+  Future<_PreparedPdfSource> _preparePdfSource(PdfFile pdf) async {
+    return _PdfSourceLoader.preparePdfSource(
+      pdf: pdf,
+      dataService: context.read<DataService>(),
+    );
+  }
 
-      final fileLength = await source.length();
-      const largeFileThreshold = 15 * 1024 * 1024;
-      if (fileLength < largeFileThreshold) {
-        return _PreparedPdfSource.path(source.path);
-      }
-
-      final pathHash = md5.convert(_pdf.path.codeUnits).toString();
-      final extension = p.extension(_pdf.path).isEmpty ? '.pdf' : p.extension(_pdf.path);
-      final cachedFile = File(p.join(cacheDir.path, '$pathHash$extension'));
-
-      if (await cachedFile.exists()) {
-        final sourceModified = await source.lastModified();
-        final cacheModified = await cachedFile.lastModified();
-        if (!sourceModified.isAfter(cacheModified) && await cachedFile.length() == fileLength) {
-          return _PreparedPdfSource.path(cachedFile.path);
-        }
-      }
-
-      await source.copy(cachedFile.path);
-      return _PreparedPdfSource.path(cachedFile.path);
-    }
-
-    final uri = _pdf.uri;
-    if (uri != null && uri.startsWith('content://')) {
-      final bytes = await context.read<DataService>().readUriBytes(uri);
-      if (bytes != null && bytes.isNotEmpty) {
-        return _PreparedPdfSource.bytes(bytes);
-      }
-      throw const _PdfUriAccessException();
-    }
-
-    throw const _PdfSourceMissingException();
+  void _warmUpPdfSource(PdfFile pdf) {
+    _PdfSourceLoader.preparePdfSource(
+      pdf: pdf,
+      dataService: context.read<DataService>(),
+    ).catchError((_) {
+      // Pré-carregamento é melhor esforço e não deve interromper a experiência.
+    });
   }
 
   Future<void> _relocalizeFile() async {
@@ -112,7 +95,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         fileHash: _pdf.fileHash,
         tagIds: _pdf.tagIds,
       );
-      _preparedSourceFuture = _preparePdfSource();
+      _preparedSourceFuture = _preparePdfSource(_pdf);
     });
   }
 
@@ -206,5 +189,53 @@ class _PreparedPdfSource {
 
   factory _PreparedPdfSource.bytes(Uint8List bytes) {
     return _PreparedPdfSource._(bytes: bytes);
+  }
+}
+
+class _PdfSourceLoader {
+  static Future<_PreparedPdfSource> preparePdfSource({
+    required PdfFile pdf,
+    required DataService dataService,
+  }) async {
+    final source = File(pdf.path);
+    if (await source.exists()) {
+      final appDir = await getApplicationSupportDirectory();
+      final cacheDir = Directory(p.join(appDir.path, 'pdf_cache'));
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
+      }
+
+      final fileLength = await source.length();
+      const largeFileThreshold = 15 * 1024 * 1024;
+      if (fileLength < largeFileThreshold) {
+        return _PreparedPdfSource.path(source.path);
+      }
+
+      final pathHash = md5.convert(pdf.path.codeUnits).toString();
+      final extension = p.extension(pdf.path).isEmpty ? '.pdf' : p.extension(pdf.path);
+      final cachedFile = File(p.join(cacheDir.path, '$pathHash$extension'));
+
+      if (await cachedFile.exists()) {
+        final sourceModified = await source.lastModified();
+        final cacheModified = await cachedFile.lastModified();
+        if (!sourceModified.isAfter(cacheModified) && await cachedFile.length() == fileLength) {
+          return _PreparedPdfSource.path(cachedFile.path);
+        }
+      }
+
+      await source.copy(cachedFile.path);
+      return _PreparedPdfSource.path(cachedFile.path);
+    }
+
+    final uri = pdf.uri;
+    if (uri != null && uri.startsWith('content://')) {
+      final bytes = await dataService.readUriBytes(uri);
+      if (bytes != null && bytes.isNotEmpty) {
+        return _PreparedPdfSource.bytes(bytes);
+      }
+      throw const _PdfUriAccessException();
+    }
+
+    throw const _PdfSourceMissingException();
   }
 }
