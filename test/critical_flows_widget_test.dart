@@ -69,6 +69,59 @@ void main() {
     expect(templates.first.slots.map((e) => e.name), ['Entrada']);
   });
 
+  testWidgets('seleção de slot lista apenas PDFs com todas tags exigidas', (tester) async {
+    await service.addTag(Tag(id: 'tag-entrada', name: 'Entrada'));
+    await service.addTag(Tag(id: 'tag-natal', name: 'Natal'));
+
+    await service.addPdf(
+      PdfFile(
+        id: 'pdf-ok',
+        path: '/tmp/entrada-natal.pdf',
+        title: 'Entrada Natal',
+        tagIds: ['tag-entrada', 'tag-natal'],
+      ),
+    );
+    await service.addPdf(
+      PdfFile(
+        id: 'pdf-incompleto',
+        path: '/tmp/entrada-comum.pdf',
+        title: 'Entrada Comum',
+        tagIds: ['tag-entrada'],
+      ),
+    );
+
+    final template = StructureTemplate(
+      id: 'tpl-tags',
+      name: 'Missa',
+      slots: [
+        SubStructureSlot(
+          id: 'slot-entrada-natal',
+          name: 'Entrada',
+          requiredTagIds: ['tag-entrada', 'tag-natal'],
+        ),
+      ],
+    );
+    await service.addTemplate(template);
+
+    final instance = StructureInstance(
+      id: 'inst-tags',
+      templateId: template.id,
+      name: 'Missa de Natal',
+      createdAt: DateTime(2026, 12, 24),
+      templateSnapshot: template,
+    );
+    await service.addInstance(instance);
+
+    await tester.pumpWidget(MaterialApp(home: InstanceSelectionScreen(instance: instance)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Entrada'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrada Natal'), findsOneWidget);
+    expect(find.text('Entrada Comum'), findsNothing);
+  });
+
   testWidgets('fluxo de montar instância permite selecionar PDF por slot', (tester) async {
     await service.addTag(Tag(id: 'tag-1', name: 'Entrada'));
     await service.addPdf(
