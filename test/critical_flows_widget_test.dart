@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:pastoral_pdf_organizer/domain/usecases/create_template.dart';
 import 'package:pastoral_pdf_organizer/models/pdf_file.dart';
 import 'package:pastoral_pdf_organizer/models/structure_instance.dart';
 import 'package:pastoral_pdf_organizer/models/structure_template.dart';
 import 'package:pastoral_pdf_organizer/models/tag.dart';
-import 'package:pastoral_pdf_organizer/domain/usecases/create_template.dart';
 import 'package:pastoral_pdf_organizer/screens/create_template_screen.dart';
 import 'package:pastoral_pdf_organizer/screens/import_pdf_screen.dart';
 import 'package:pastoral_pdf_organizer/screens/instance_selection_screen.dart';

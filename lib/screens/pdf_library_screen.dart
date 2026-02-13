@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/pdf_file.dart';
 import '../domain/usecases/assign_pdf_tags.dart';
+import '../models/pdf_file.dart';
 import '../models/tag.dart';
 import '../services/data_service.dart';
 import 'file_browser_screen.dart';
