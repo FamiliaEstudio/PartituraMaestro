@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -50,13 +51,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   void _warmUpPdfSource(PdfFile pdf) {
-    _PdfSourceLoader.preparePdfSource(
-      pdf: pdf,
-      dataService: context.read<DataService>(),
-    ).catchError((_) {
-      // Pré-carregamento é melhor esforço e não deve interromper a experiência.
-    });
+    unawaited(_warmUpPdfSourceBestEffort(pdf));
   }
+
+  Future<void> _warmUpPdfSourceBestEffort(PdfFile pdf) async {
+    try {
+      await _PdfSourceLoader.preparePdfSource(
+        pdf: pdf,
+        dataService: context.read<DataService>(),
+      );
+    } catch (_) {
+      // Pré-carregamento é melhor esforço e não deve interromper a experiência.
+    }
+  }
+
 
   Future<void> _relocalizeFile() async {
     final result = await FilePicker.platform.pickFiles(
