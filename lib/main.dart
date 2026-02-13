@@ -186,7 +186,8 @@ class StructuresHome extends StatelessWidget {
                         child: Column(
                           children: [
                             DropdownButtonFormField<String?>(
-                              value: state.templateFilterId,
+                              key: ValueKey(state.templateFilterId),
+                              initialValue: state.templateFilterId,
                               decoration: const InputDecoration(labelText: 'Filtrar por template'),
                               items: [
                                 const DropdownMenuItem<String?>(value: null, child: Text('Todos')),
