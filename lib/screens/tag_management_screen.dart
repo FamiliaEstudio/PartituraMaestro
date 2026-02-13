@@ -325,7 +325,7 @@ class _DeleteTagDialogState extends State<_DeleteTagDialog> {
             onChanged: (value) {
               if (value == true && widget.replacementOptions.isEmpty) return;
               setState(() {
-                _replace = value;
+                _replace = value ?? false;
               });
             },
             child: Column(

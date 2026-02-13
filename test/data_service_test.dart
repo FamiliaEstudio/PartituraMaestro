@@ -17,7 +17,6 @@ class _FakeUriAccessService extends UriAccessService {
   _FakeUriAccessService({
     this.treeDocs = const <UriDocumentMetadata>[],
     this.bytesByUri = const <String, Uint8List>{},
-    this.persistResult = true,
   });
 
   final List<UriDocumentMetadata> treeDocs;
@@ -25,7 +24,9 @@ class _FakeUriAccessService extends UriAccessService {
   final bool persistResult;
 
   @override
-  Future<List<UriDocumentMetadata>> listTreeDocumentsRecursively(String treeUri) async => treeDocs;
+  Future<List<UriDocumentMetadata>> listTreeDocumentsRecursively(
+          String treeUri) async =>
+      treeDocs;
 
   @override
   Future<Uint8List?> readBytes(String uri) async => bytesByUri[uri];
@@ -66,21 +67,27 @@ void main() {
     );
 
     final onlyEntrada = await service.findPdfsByTags(['tag-entrada']);
-    final entradaNatal = await service.findPdfsByTags(['tag-entrada', 'tag-natal']);
-    final semResultado = await service.findPdfsByTags(['tag-gloria', 'tag-natal']);
+    final entradaNatal =
+        await service.findPdfsByTags(['tag-entrada', 'tag-natal']);
+    final semResultado =
+        await service.findPdfsByTags(['tag-gloria', 'tag-natal']);
 
     expect(onlyEntrada.map((e) => e.id), containsAll(['pdf-1', 'pdf-2']));
     expect(entradaNatal.map((e) => e.id), ['pdf-1']);
     expect(semResultado, isEmpty);
   });
 
-  test('persistência de seleção por slot mantém vínculo com instância', () async {
+  test('persistência de seleção por slot mantém vínculo com instância',
+      () async {
     await service.addTag(Tag(id: 'tag-entrada', name: 'Entrada'));
     final template = StructureTemplate(
       id: 'tpl-1',
       name: 'Missa',
       slots: [
-        SubStructureSlot(id: 'slot-entrada', name: 'Entrada', requiredTagIds: ['tag-entrada']),
+        SubStructureSlot(
+            id: 'slot-entrada',
+            name: 'Entrada',
+            requiredTagIds: ['tag-entrada']),
       ],
     );
     await service.addTemplate(template);
@@ -104,10 +111,11 @@ void main() {
       ),
     );
 
-    await service.updateInstanceSelection('inst-1', 'slot-entrada', ['pdf-entrada']);
+    await service.updateInstanceSelection(
+        'inst-1', 'slot-entrada', 'pdf-entrada');
 
     final selections = await service.getInstanceSelections('inst-1');
-    expect(selections['slot-entrada'], ['pdf-entrada']);
+    expect(selections['slot-entrada'], 'pdf-entrada');
 
     await service.clearInstanceSelection('inst-1', 'slot-entrada');
     final cleared = await service.getInstanceSelections('inst-1');
@@ -118,7 +126,8 @@ void main() {
     final tempDir = await Directory.systemTemp.createTemp('pdf-dup');
     final originalPath = p.join(tempDir.path, 'original.pdf');
     final duplicatePath = p.join(tempDir.path, 'duplicate.pdf');
-    final pdfBytes = '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
+    final pdfBytes =
+        '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
 
     await File(originalPath).writeAsBytes(pdfBytes);
     await File(duplicatePath).writeAsBytes(pdfBytes);
@@ -138,7 +147,8 @@ void main() {
     final duplicateResult = await service.importPdfCandidates(
       candidates: [
         PdfImportCandidate(sourceId: originalPath, displayName: 'original.pdf'),
-        PdfImportCandidate(sourceId: duplicatePath, displayName: 'duplicate.pdf'),
+        PdfImportCandidate(
+            sourceId: duplicatePath, displayName: 'duplicate.pdf'),
       ],
       tagIds: const [],
       idPrefix: 'dup-check',
@@ -160,7 +170,8 @@ void main() {
   test('mergeTags atualiza tags em PDF já importado por caminho', () async {
     final tempDir = await Directory.systemTemp.createTemp('pdf-upsert-tags');
     final originalPath = p.join(tempDir.path, 'original.pdf');
-    final pdfBytes = '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
+    final pdfBytes =
+        '%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'.codeUnits;
 
     await File(originalPath).writeAsBytes(pdfBytes);
     await service.addTag(Tag(id: 'tag-a', name: 'Tag A'));
@@ -213,7 +224,8 @@ void main() {
     expect(updated.uri, isNull);
   });
 
-  test('exclusão/substituição de tag atualiza vínculos em PDFs e slots', () async {
+  test('exclusão/substituição de tag atualiza vínculos em PDFs e slots',
+      () async {
     await service.addTag(Tag(id: 'tag-antiga', name: 'Antiga'));
     await service.addTag(Tag(id: 'tag-nova', name: 'Nova'));
 
@@ -231,12 +243,14 @@ void main() {
         id: 'tpl-1',
         name: 'Missa',
         slots: [
-          SubStructureSlot(id: 'slot-1', name: 'Entrada', requiredTagIds: ['tag-antiga']),
+          SubStructureSlot(
+              id: 'slot-1', name: 'Entrada', requiredTagIds: ['tag-antiga']),
         ],
       ),
     );
 
-    await service.deleteTagWithStrategy(tagId: 'tag-antiga', replacementTagId: 'tag-nova');
+    await service.deleteTagWithStrategy(
+        tagId: 'tag-antiga', replacementTagId: 'tag-nova');
 
     final pdfAfterReplace = (await service.getPdfs()).single;
     expect(pdfAfterReplace.tagIds, ['tag-nova']);
@@ -300,7 +314,8 @@ void main() {
       ),
     );
 
-    final scanned = await serviceWithUriScan.scanPdfDirectory('content://tree/root');
+    final scanned =
+        await serviceWithUriScan.scanPdfDirectory('content://tree/root');
 
     expect(scanned, hasLength(1));
     expect(scanned.single.displayName, 'Hino.pdf');
@@ -308,14 +323,12 @@ void main() {
     expect(scanned.single.path, 'saf://content://tree/root/hino');
   });
 
-
-
   test('bloqueia template duplicado ignorando caixa e acento', () async {
     await service.addTemplate(
       StructureTemplate(
         id: 'tpl-1',
         name: 'Míssa Solene',
-        slots: [
+        slots: const [
           SubStructureSlot(id: 'slot-1', name: 'Entrada'),
         ],
       ),
@@ -326,7 +339,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-2',
           name: 'missa solene',
-          slots: [
+          slots: const [
             SubStructureSlot(id: 'slot-2', name: 'Ofertório'),
           ],
         ),
@@ -341,7 +354,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-invalid-slot',
           name: 'Missa',
-          slots: [
+          slots: const [
             SubStructureSlot(id: 'slot-empty', name: '   '),
           ],
         ),
@@ -350,13 +363,15 @@ void main() {
     );
   });
 
-  test('bloqueia template com nomes de slot duplicados ignorando caixa e acento', () async {
+  test(
+      'bloqueia template com nomes de slot duplicados ignorando caixa e acento',
+      () async {
     expect(
       () => service.addTemplate(
         StructureTemplate(
           id: 'tpl-dup-slot',
           name: 'Missa de testes',
-          slots: [
+          slots: const [
             SubStructureSlot(id: 'slot-1', name: 'Glória'),
             SubStructureSlot(id: 'slot-2', name: 'gloria'),
           ],
@@ -366,7 +381,8 @@ void main() {
     );
   });
 
-  test('importPdfCandidates lê bytes de candidato URI sem filesystem local', () async {
+  test('importPdfCandidates lê bytes de candidato URI sem filesystem local',
+      () async {
     const uri = 'content://tree/root/documento';
     final pdfBytes = Uint8List.fromList('%PDF-1.4\n%%EOF'.codeUnits);
     final serviceWithUriRead = DataService(

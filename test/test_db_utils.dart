@@ -1,5 +1,4 @@
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<void> configureTestDatabase() async {
