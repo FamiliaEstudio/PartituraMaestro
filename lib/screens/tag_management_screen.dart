@@ -320,31 +320,32 @@ class _DeleteTagDialogState extends State<_DeleteTagDialog> {
         children: [
           Text('A tag "${widget.tag.name}" está em ${widget.usage.pdfCount} PDFs e ${widget.usage.slotCount} slots.'),
           const SizedBox(height: 12),
-          RadioListTile<bool>(
-            contentPadding: EdgeInsets.zero,
-            value: false,
+          RadioGroup<bool>(
             groupValue: _replace,
-            title: const Text('Remover das referências'),
-            subtitle: const Text('A tag será apagada dos PDFs e slots que a usam.'),
             onChanged: (value) {
+              if (value == true && widget.replacementOptions.isEmpty) return;
               setState(() {
-                _replace = value ?? false;
+                _replace = value;
               });
             },
-          ),
-          RadioListTile<bool>(
-            contentPadding: EdgeInsets.zero,
-            value: true,
-            groupValue: _replace,
-            title: const Text('Substituir por outra tag'),
-            subtitle: const Text('As referências serão migradas para outra tag.'),
-            onChanged: widget.replacementOptions.isEmpty
-                ? null
-                : (value) {
-                    setState(() {
-                      _replace = value ?? false;
-                    });
-                  },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<bool>(
+                  contentPadding: EdgeInsets.zero,
+                  value: false,
+                  title: const Text('Remover das referências'),
+                  subtitle: const Text('A tag será apagada dos PDFs e slots que a usam.'),
+                ),
+                RadioListTile<bool>(
+                  contentPadding: EdgeInsets.zero,
+                  value: true,
+                  enabled: widget.replacementOptions.isNotEmpty,
+                  title: const Text('Substituir por outra tag'),
+                  subtitle: const Text('As referências serão migradas para outra tag.'),
+                ),
+              ],
+            ),
           ),
           if (_replace)
             DropdownButtonFormField<String>(
