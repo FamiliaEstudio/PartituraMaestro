@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/mipmap-xhdpi_ic_launcher.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/mipmap-xhdpi/ic_launcher.xml"
+    },
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/drawable-v21_launch_background.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/drawable-v21/launch_background.xml"
+    },
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/mipmap-xxhdpi_ic_launcher.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/mipmap-xxhdpi/ic_launcher.xml"
+    },
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/mipmap-mdpi_ic_launcher.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/mipmap-mdpi/ic_launcher.xml"
+    },
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/mipmap-hdpi_ic_launcher.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/mipmap-hdpi/ic_launcher.xml"
+    },
+    {
+        "merged": "com.partituramaestro.pastoral_pdf_organizer.app-debug-29:/mipmap-xxxhdpi_ic_launcher.xml.flat",
+        "source": "com.partituramaestro.pastoral_pdf_organizer.app-main-24:/mipmap-xxxhdpi/ic_launcher.xml"
+    }
+]

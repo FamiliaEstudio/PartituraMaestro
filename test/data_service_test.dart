@@ -17,6 +17,7 @@ class _FakeUriAccessService extends UriAccessService {
   _FakeUriAccessService({
     this.treeDocs = const <UriDocumentMetadata>[],
     this.bytesByUri = const <String, Uint8List>{},
+    this.persistResult = true,
   });
 
   final List<UriDocumentMetadata> treeDocs;
@@ -112,10 +113,10 @@ void main() {
     );
 
     await service.updateInstanceSelection(
-        'inst-1', 'slot-entrada', 'pdf-entrada');
+        'inst-1', 'slot-entrada', ['pdf-entrada']);
 
     final selections = await service.getInstanceSelections('inst-1');
-    expect(selections['slot-entrada'], 'pdf-entrada');
+    expect(selections['slot-entrada'], ['pdf-entrada']);
 
     await service.clearInstanceSelection('inst-1', 'slot-entrada');
     final cleared = await service.getInstanceSelections('inst-1');
@@ -328,7 +329,7 @@ void main() {
       StructureTemplate(
         id: 'tpl-1',
         name: 'Míssa Solene',
-        slots: const [
+        slots: [
           SubStructureSlot(id: 'slot-1', name: 'Entrada'),
         ],
       ),
@@ -339,7 +340,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-2',
           name: 'missa solene',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-2', name: 'Ofertório'),
           ],
         ),
@@ -354,7 +355,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-invalid-slot',
           name: 'Missa',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-empty', name: '   '),
           ],
         ),
@@ -371,7 +372,7 @@ void main() {
         StructureTemplate(
           id: 'tpl-dup-slot',
           name: 'Missa de testes',
-          slots: const [
+          slots: [
             SubStructureSlot(id: 'slot-1', name: 'Glória'),
             SubStructureSlot(id: 'slot-2', name: 'gloria'),
           ],
@@ -386,7 +387,8 @@ void main() {
     const uri = 'content://tree/root/documento';
     final pdfBytes = Uint8List.fromList('%PDF-1.4\n%%EOF'.codeUnits);
     final serviceWithUriRead = DataService(
-      uriAccessService: _FakeUriAccessService(bytesByUri: {uri: pdfBytes}),
+      uriAccessService:
+          _FakeUriAccessService(bytesByUri: {uri: pdfBytes}, persistResult: false),
     );
 
     final result = await serviceWithUriRead.importPdfCandidates(

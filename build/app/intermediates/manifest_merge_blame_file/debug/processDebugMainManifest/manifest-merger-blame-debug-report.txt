@@ -1,0 +1,165 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.partituramaestro.pastoral_pdf_organizer"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="36" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->D:\PartituraMaestro\PartituraMaestro\android\app\src\debug\AndroidManifest.xml:2:5-66
+11-->D:\PartituraMaestro\PartituraMaestro\android\app\src\debug\AndroidManifest.xml:2:22-64
+12
+13    <queries>
+13-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:27:5-32:15
+14        <intent>
+14-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:28:9-31:18
+15            <action android:name="android.intent.action.PROCESS_TEXT" />
+15-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:29:13-72
+15-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:29:21-70
+16
+17            <data android:mimeType="text/plain" />
+17-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:30:13-50
+17-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:30:19-48
+18        </intent>
+19        <intent>
+19-->[:file_picker] D:\PartituraMaestro\PartituraMaestro\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:9-12:18
+20            <action android:name="android.intent.action.GET_CONTENT" />
+20-->[:file_picker] D:\PartituraMaestro\PartituraMaestro\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:13-72
+20-->[:file_picker] D:\PartituraMaestro\PartituraMaestro\build\file_picker\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:21-69
+21
+22            <data android:mimeType="*/*" />
+22-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:30:13-50
+22-->D:\PartituraMaestro\PartituraMaestro\android\app\src\main\AndroidManifest.xml:30:19-48
+23        </intent>
+24    </queries>
+25
+26    <permission
+26-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:22:5-24:47
+27        android:name="com.partituramaestro.pastoral_pdf_organizer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+27-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:23:9-81
+28        android:protectionLevel="signature" />
+28-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:24:9-44
+29
+30    <uses-permission android:name="com.partituramaestro.pastoral_pdf_organizer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+30-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:26:5-97
+30-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:26:22-94
+31
+32    <application
+33        android:name="android.app.Application"
+34        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+34-->[androidx.core:core:1.17.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1d97a6df6cd95b1cccee0249fad12634\transformed\core-1.17.0\AndroidManifest.xml:28:18-86
+35        android:debuggable="true"
+36        android:extractNativeLibs="false"
+37        android:icon="@mipmap/ic_launcher"
+38        android:label="Partitura Maestro" >
+39        <activity
+40            android:name="com.partituramaestro.pastoral_pdf_organizer.MainActivity"
+41            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+42            android:exported="true"
+43            android:hardwareAccelerated="true"
+44            android:launchMode="singleTop"
+45            android:taskAffinity=""
+46            android:theme="@style/LaunchTheme"
+47            android:windowSoftInputMode="adjustResize" >
+48            <meta-data
+49                android:name="io.flutter.embedding.android.NormalTheme"
+50                android:resource="@style/NormalTheme" />
+51
+52            <intent-filter>
+53                <action android:name="android.intent.action.MAIN" />
+54
+55                <category android:name="android.intent.category.LAUNCHER" />
+56            </intent-filter>
+57        </activity>
+58
+59        <meta-data
+60            android:name="flutterEmbedding"
+61            android:value="2" />
+62
+63        <activity
+63-->[:url_launcher_android] D:\PartituraMaestro\PartituraMaestro\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:8:9-11:74
+64            android:name="io.flutter.plugins.urllauncher.WebViewActivity"
+64-->[:url_launcher_android] D:\PartituraMaestro\PartituraMaestro\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:9:13-74
+65            android:exported="false"
+65-->[:url_launcher_android] D:\PartituraMaestro\PartituraMaestro\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:10:13-37
+66            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
+66-->[:url_launcher_android] D:\PartituraMaestro\PartituraMaestro\build\url_launcher_android\intermediates\merged_manifest\debug\processDebugManifest\AndroidManifest.xml:11:13-71
+67
+68        <uses-library
+68-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:23:9-25:40
+69            android:name="androidx.window.extensions"
+69-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:24:13-54
+70            android:required="false" />
+70-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:25:13-37
+71        <uses-library
+71-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:26:9-28:40
+72            android:name="androidx.window.sidecar"
+72-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:27:13-51
+73            android:required="false" />
+73-->[androidx.window:window:1.2.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\adfc5180118040c1320ec459a1ab383e\transformed\jetified-window-1.2.0\AndroidManifest.xml:28:13-37
+74
+75        <provider
+75-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:24:9-32:20
+76            android:name="androidx.startup.InitializationProvider"
+76-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:25:13-67
+77            android:authorities="com.partituramaestro.pastoral_pdf_organizer.androidx-startup"
+77-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:26:13-68
+78            android:exported="false" >
+78-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:27:13-37
+79            <meta-data
+79-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
+80                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+80-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
+81                android:value="androidx.startup" />
+81-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\Pichau\.gradle\caches\8.13\transforms\1363577b15fec54076acb59b03e0133c\transformed\jetified-lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
+82            <meta-data
+82-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+83                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+83-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+84                android:value="androidx.startup" />
+84-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+85        </provider>
+86
+87        <receiver
+87-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+88            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+88-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+89            android:directBootAware="false"
+89-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+90            android:enabled="true"
+90-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+91            android:exported="true"
+91-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+92            android:permission="android.permission.DUMP" >
+92-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+93            <intent-filter>
+93-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+94                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+94-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+94-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+95            </intent-filter>
+96            <intent-filter>
+96-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+97                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+98            </intent-filter>
+99            <intent-filter>
+99-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+100                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+101            </intent-filter>
+102            <intent-filter>
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+103                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Pichau\.gradle\caches\8.13\transforms\9cbd48121d80a37afffece0652c6396b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+104            </intent-filter>
+105        </receiver>
+106    </application>
+107
+108</manifest>

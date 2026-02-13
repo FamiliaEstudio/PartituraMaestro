@@ -1,0 +1,1 @@
+ D:\\PartituraMaestro\\PartituraMaestro\\.dart_tool\\flutter_build\\1c409442ddb3b971b6b23445bdce4b48\\native_assets.json:  D:\\PartituraMaestro\\PartituraMaestro\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\download-e556cc8\\libsqlite3.so

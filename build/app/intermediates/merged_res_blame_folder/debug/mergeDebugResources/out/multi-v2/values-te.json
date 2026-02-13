@@ -1,0 +1,43 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.partituramaestro.pastoral_pdf_organizer.app-mergeDebugResources-27:/values-te/values-te.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Pichau\\.gradle\\caches\\8.13\\transforms\\ea05dff37a8bef1dee2070fd3253e5f2\\transformed\\browser-1.9.0\\res\\values-te\\values-te.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,166,274,385",
+                        "endColumns": "110,107,110,108",
+                        "endOffsets": "161,269,380,489"
+                    },
+                    "to": {
+                        "startLines": "9,10,11,12",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "805,916,1024,1135",
+                        "endColumns": "110,107,110,108",
+                        "endOffsets": "911,1019,1130,1239"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Pichau\\.gradle\\caches\\8.13\\transforms\\1d97a6df6cd95b1cccee0249fad12634\\transformed\\core-1.17.0\\res\\values-te\\values-te.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,157,265,367,468,574,681,805",
+                        "endColumns": "101,107,101,100,105,106,123,100",
+                        "endOffsets": "152,260,362,463,569,676,800,901"
+                    },
+                    "to": {
+                        "startLines": "2,3,4,5,6,7,8,13",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,157,265,367,468,574,681,1244",
+                        "endColumns": "101,107,101,100,105,106,123,100",
+                        "endOffsets": "152,260,362,463,569,676,800,1340"
+                    }
+                }
+            ]
+        }
+    ]
+}

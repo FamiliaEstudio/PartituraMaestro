@@ -1,0 +1,43 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.partituramaestro.pastoral_pdf_organizer.app-mergeDebugResources-27:/values-fr-rCA/values-fr-rCA.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Pichau\\.gradle\\caches\\8.13\\transforms\\ea05dff37a8bef1dee2070fd3253e5f2\\transformed\\browser-1.9.0\\res\\values-fr-rCA\\values-fr-rCA.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,162,264,383",
+                        "endColumns": "106,101,118,104",
+                        "endOffsets": "157,259,378,483"
+                    },
+                    "to": {
+                        "startLines": "9,10,11,12",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "778,885,987,1106",
+                        "endColumns": "106,101,118,104",
+                        "endOffsets": "880,982,1101,1206"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Pichau\\.gradle\\caches\\8.13\\transforms\\1d97a6df6cd95b1cccee0249fad12634\\transformed\\core-1.17.0\\res\\values-fr-rCA\\values-fr-rCA.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,153,255,354,456,560,664,778",
+                        "endColumns": "97,101,98,101,103,103,113,100",
+                        "endOffsets": "148,250,349,451,555,659,773,874"
+                    },
+                    "to": {
+                        "startLines": "2,3,4,5,6,7,8,13",
+                        "startColumns": "4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,153,255,354,456,560,664,1211",
+                        "endColumns": "97,101,98,101,103,103,113,100",
+                        "endOffsets": "148,250,349,451,555,659,773,1307"
+                    }
+                }
+            ]
+        }
+    ]
+}

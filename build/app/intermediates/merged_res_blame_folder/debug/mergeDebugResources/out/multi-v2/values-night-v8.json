@@ -1,0 +1,28 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.partituramaestro.pastoral_pdf_organizer.app-mergeDebugResources-27:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "D:\\PartituraMaestro\\PartituraMaestro\\android\\app\\src\\main\\res\\values-night\\styles.xml",
+                    "from": {
+                        "startLines": "2,5",
+                        "startColumns": "4,4",
+                        "startOffsets": "57,232",
+                        "endLines": "4,7",
+                        "endColumns": "12,12",
+                        "endOffsets": "226,398"
+                    },
+                    "to": {
+                        "startLines": "2,5",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,227",
+                        "endLines": "4,7",
+                        "endColumns": "12,12",
+                        "endOffsets": "222,391"
+                    }
+                }
+            ]
+        }
+    ]
+}
