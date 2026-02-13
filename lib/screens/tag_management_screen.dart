@@ -348,7 +348,8 @@ class _DeleteTagDialogState extends State<_DeleteTagDialog> {
           ),
           if (_replace)
             DropdownButtonFormField<String>(
-              value: _selectedReplacementId,
+              key: ValueKey(_selectedReplacementId),
+              initialValue: _selectedReplacementId,
               decoration: const InputDecoration(labelText: 'Tag substituta'),
               items: widget.replacementOptions
                   .map((tag) => DropdownMenuItem(value: tag.id, child: Text(tag.name)))
