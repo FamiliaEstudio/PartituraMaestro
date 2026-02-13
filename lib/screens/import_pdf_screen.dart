@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/usecases/find_candidate_pdfs.dart';
-import '../services/android_document_service.dart';
 import '../models/tag.dart';
+import '../services/android_document_service.dart';
 import '../services/data_service.dart';
 import 'file_browser_screen.dart';
 
